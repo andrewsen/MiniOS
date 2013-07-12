@@ -1,0 +1,77 @@
+#! /bin/bash
+
+fbuild() {
+	make all && sudo make
+	chown andrew hdd.img kernel.bin
+}
+
+CFILE=`readlink -e "$0"`
+CDIR=`dirname "$CFILE"`
+
+cd "$CDIR"
+#echo $USER
+
+
+case $1 in
+--debug | -d)
+	fbuild
+	
+	sudo qemu-system-i386 -s -S -hda hdd.img &
+	cgdb kernel.bin.dbg
+	;;
+--rebuild | -R)
+	make rebuild
+	chown andrew hdd.img kernel.bin
+	;;
+--build | -b)
+	fbuild
+	;;
+--clean | -c)
+	make clean
+	;;
+--run | -r)
+	fbuild
+	sudo qemu-system-i386 -hda hdd.img
+	;;
+--write | -w)
+	fbuild
+	
+	if [ $2 -e '--reboot' ] && [ $# = 3 ] ; then
+		sudo dd if=./hdd.img of=$3
+		sudo reboot
+	elif [ $# = 2 ] ; then
+		sudo dd if=./hdd.img of=$2
+	else
+		echo "Invalid parameters!"
+	fi
+	;;
+--help | -h)
+	echo \
+	"Использование: $0 [OPTION]...
+Сборка образа ОС.
+
+Options:
+  -d, --debug 	             run OS in debug mode with cgdb
+  -b, --build                build OS and image
+  -R, --rebuild              rebuild OS and image
+  -w, --write             	 write OS image
+  -r, --run  	             run OS on emulator
+  -c, --clean	             clean object and executable files (do make clean)
+  -h, --help                 display this help and exit"
+	;;
+*)
+	fbuild
+	;;
+esac
+
+
+
+#if [ $1 = "debug" ] ; then
+#elif [ $1 = "rebuild" ] ; then
+#elif [ $1 = "clean" ] ; then
+#	make clean
+#elif [ $1 = "-r" ] ; then
+#elif [ $1 = "write" ] ; then
+#else
+#fi
+#sudo dd if=./hdd.img of=/dev/sdb
