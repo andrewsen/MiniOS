@@ -1,0 +1,8 @@
+timeout   3
+default   0
+
+title  senko_os
+root   (hd0,0)
+multiboot /kernel.bin
+module /initrd.img
+
