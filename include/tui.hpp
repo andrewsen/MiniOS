@@ -32,7 +32,7 @@ extern "C" {
 
     #define MAX_COL 80
     #define MAX_ROW 25
-    #define kmalloc malloc
+    //#define kmalloc malloc
     #define kfree free
 
     using namespace std;
@@ -86,10 +86,14 @@ struct TPoint {
     };
 }; */
 
+class TContainer;
 
 class TElement {
+    friend class TContainer;
     friend class TScreen;
 protected:
+    TContainer * parent;
+
     static int counter;
 
     typedef void (*event)(TElement * element);
@@ -109,8 +113,8 @@ protected:
     colors BackColor = Black;
 
     TElement operator=(int i) {
-        if(i == 0) {
-            this->uid = 0;
+        if(i == NULL) {
+            this->uid = NULL;
         }
         return *this;
     }
@@ -208,6 +212,7 @@ public:
 
 
     TElement () {
+        uid = NULL;
         pos = TPoint(0, 0);
     }
 
@@ -228,8 +233,162 @@ public:
     void setOnDispose(const event &value);
 };
 
-class TScreen {
+class TContainer : public TElement {
+protected:
+
     int index = 0;
+    TElement elements[ELEMENTS_SIZE];
+    vga_cell bitmap [MAX_ROW * MAX_COL];
+public:
+
+    void addElement (TElement * e) {
+        //printf("TUI: Adding element %s\n", e->getName());
+        e->setPos(TPoint(e->getPos().X + this->pos.X, e->getPos().Y + this->pos.Y));
+#ifndef linux
+        if(index == ELEMENTS_SIZE-1) panic("TUI Element container is full!", 2, -1);
+        e->collection = (vga_cell*)(DEF_VRAM_BASE);
+#else
+        e->collection = getVgaBuffer();
+#endif
+        //curr_row = 1;
+        //printf("Collection: %d, VGA: %X\n", (sizeof(vga_cell)), DEF_VRAM_BASE);
+        e->bitmap = (vga_cell*)kmalloc(sizeof(vga_cell) * e->heigh * e->width);
+
+        int row = 0, idx = 0;
+        for (int h = e->pos.Y; h < e->heigh + e->pos.Y; h++, idx++) {
+            row = e->pos.X + h * MAX_COL;
+            for (int w = 0; w < e->width; w++) {
+#ifndef linux
+                e->bitmap[idx] = ((vga_cell*)(void*)(DEF_VRAM_BASE))[row + w];
+#else
+                e->bitmap[idx] = getVgaBuffer()[row + w];
+#endif
+            }
+        }
+
+        //for(int i = 0; i < ELEMENTS_SIZE; ++i) {
+        //    if(elements[i].uid != NULL) elements[i].Initialize();
+        //}
+
+        e->Initialize();
+#ifdef linux
+        flushVgaBuffer();
+        e->uid = index ^ strlen(e->name);
+#else
+        e->uid = index | strlen(e->name) ^ (int)e;
+#endif
+
+        //printf("element %s added!\n", e->name);
+        for(int i = 0; i < ELEMENTS_SIZE; i++) {
+            if(elements[i].uid == e->uid) {
+                //dispose();
+                printf("  Dispose reason: Element `%s' already added at %d!\n", e->name, i);
+             }
+                //panic("TUI: Element already added!", 2);
+        }
+        elements[index] = *e;
+        index++;
+
+        //printf("TUI: element '%s' added! UID = %X\n", e->name, e->uid);
+    }
+
+    void removeElement(TElement * e, int pos = -1) {
+        bool contains = false;
+        if(pos == -1) {
+            for(int i = 0; elements[i].uid != NULL; i++)
+                if(elements[i].uid == e->uid) {
+                    contains = true;
+                    pos = i;
+                }
+            if(!contains) return;
+
+        }
+        int row = 0, idx = 0;
+
+        //e->Dispose();
+        //printf("TUI: element '%s' ", e->name);
+        elements[pos] = NULL;
+
+#ifdef linux
+        flushVgaBuffer();
+#endif
+
+#ifndef linux
+        TElement * temp = (TElement*)kmalloc(sizeof(TElement) * ELEMENTS_SIZE);
+#else
+        TElement * temp = new TElement [ELEMENTS_SIZE];
+#endif
+        for(int i = 0; i < ELEMENTS_SIZE; i++)
+            temp[i] = elements[i];
+        for(int i = 0; i < ELEMENTS_SIZE; i++)
+            elements[i].uid = NULL;
+        idx = 0;
+        for(int i = 0; i < ELEMENTS_SIZE; i++)
+            if(temp[i].uid != NULL) {
+                elements[idx] = temp[i];
+                idx++;
+            }
+
+#ifndef linux
+        kfree(temp);
+#else
+        delete [] temp;
+#endif
+        //printf("removed!\n");
+        index--;
+        for(int i = 0; i < ELEMENTS_SIZE; ++i) {
+            if(elements[i].uid != NULL) elements[i].Initialize();
+        }
+        return;
+
+    }
+
+    void removeElement(const char * name) {
+        for(int i = 0; elements[i].uid != NULL; i++) {
+            if(!strcmp(elements[i].name, name)) {
+                removeElement(&elements[i], i);
+                return;
+            }
+        }
+    }
+
+    void removeElement(uint32_t uid) {
+        for(int i = 0; elements[i].uid != NULL; i++) {
+            if(elements[i].uid == uid) {
+                removeElement(&elements[i], i);
+                return;
+            }
+        }
+    }
+
+    void setCell(vga_cell cell, uint32_t X, uint32_t Y)  {
+#ifndef linux
+        vga_cell * vga = (vga_cell *)DEF_VRAM_BASE;
+        vga[X + Y * MAX_COL] = cell;
+#else
+        vga_cell * vga = getVgaBuffer();
+        vga[X + Y * MAX_COL] = cell;
+        flushVgaBuffer();
+#endif
+    }
+
+    vga_cell getCell( uint32_t X, uint32_t Y) {
+#ifndef linux
+        vga_cell * vga = (vga_cell *)DEF_VRAM_BASE;
+#else
+        vga_cell * vga = getVgaBuffer();
+#endif
+        return vga[X + Y * MAX_COL];
+    }
+
+    TContainer () {
+        for(int i = 0; i < ELEMENTS_SIZE; ++i) {
+            elements[i] = TElement();
+        }
+    }
+};
+
+class TScreen : public TContainer {
     TElement elements[ELEMENTS_SIZE];
     vga_cell bitmap [MAX_ROW * MAX_COL];
     uint8_t bcol, brow;
@@ -272,128 +431,6 @@ public:
         clear_screen();
     }
 
-    void addElement (TElement * e) {
-        //printf("TUI: Adding element %s\n", e->getName());
-
-#ifndef linux
-        if(index == ELEMENTS_SIZE-1) panic("TUI Element container is full!", 2, -1);
-        e->collection = (vga_cell*)(DEF_VRAM_BASE);
-#else
-        e->collection = getVgaBuffer();
-#endif
-        //curr_row = 1;
-        //printf("Collection: %d, VGA: %X\n", (sizeof(vga_cell)), DEF_VRAM_BASE);
-        e->bitmap = (vga_cell*)kmalloc(sizeof(vga_cell) * e->heigh * e->width);
-
-        int row = 0, idx = 0;
-        for (int h = e->pos.Y; h < e->heigh + e->pos.Y; h++, idx++) {
-            row = e->pos.X + h * MAX_COL;
-            for (int w = 0; w < e->width; w++) {   
-#ifndef linux
-                e->bitmap[idx] = ((vga_cell*)(void*)(DEF_VRAM_BASE))[row + w];
-#else
-                e->bitmap[idx] = getVgaBuffer()[row + w];
-#endif
-            }
-        }
-
-        e->Initialize();
-#ifdef linux
-        flushVgaBuffer();
-        e->uid = index ^ strlen(e->name);
-#else
-        e->uid = index | strlen(e->name) ^ (int)e;
-#endif
-
-        //printf("element %s added!\n", e->name);
-        for(int i = 0; i < ELEMENTS_SIZE; i++) {
-            if(elements[i].uid == e->uid) {
-                //dispose();
-                //printf("  Dispose reason: Element `%s' already added at %d!\n", e->name, i);
-             }
-                //panic("TUI: Element already added!", 2);
-        }
-        elements[index] = *e;
-        index++;
-
-        //printf("TUI: element '%s' added! UID = %X\n", e->name, e->uid);
-    }
-
-    void removeElement(TElement * e, int pos = -1) {
-        bool contains = false;
-        if(pos == -1) {
-            for(int i = 0; elements[i].uid != NULL; i++)
-                if(elements[i].uid == e->uid) {
-                    contains = true;
-                    pos = i;
-                }
-            if(!contains) return;
-
-        }
-        int row = 0, idx = 0;
-        for (int h = e->pos.Y; h < e->heigh + e->pos.Y; h++, idx++) {
-            row = e->pos.X + h * MAX_COL;
-            for (int w = 0; w < e->width; w++) {    
-#ifndef linux
-                ((vga_cell*)(void*)(DEF_VRAM_BASE))[row + w] = e->bitmap[idx];
-#else
-                getVgaBuffer()[row + w] = e->bitmap[idx];
-#endif
-            }
-        }
-        //e->Dispose();
-        //printf("TUI: element '%s' ", e->name);
-        elements[pos] = NULL;
-
-#ifdef linux
-        flushVgaBuffer();
-#endif
-
-#ifndef linux
-        TElement * temp = (TElement*)kmalloc(sizeof(TElement) * ELEMENTS_SIZE);
-#else
-        TElement * temp = new TElement [ELEMENTS_SIZE];
-#endif
-        for(int i = 0; i < ELEMENTS_SIZE; i++)
-            temp[i] = elements[i];
-        for(int i = 0; i < ELEMENTS_SIZE; i++)
-            elements[i] = NULL;
-        idx = 0;
-        for(int i = 0; i < ELEMENTS_SIZE; i++)
-            if(temp[i].uid != NULL) {
-                elements[idx] = temp[i];
-                idx++;
-            }
-
-#ifndef linux
-        kfree(temp);
-#else
-        delete [] temp;
-#endif
-        //printf("removed!\n");
-        index--;
-        return;
-
-    }
-
-    void removeElement(const char * name) {
-        for(int i = 0; elements[i].uid != NULL; i++) {
-            if(!strcmp(elements[i].name, name)) {
-                removeElement(&elements[i], i);
-                return;
-            }
-        }
-    }
-
-    void removeElement(uint32_t uid) {
-        for(int i = 0; elements[i].uid != NULL; i++) {
-            if(elements[i].uid == uid) {
-                removeElement(&elements[i], i);
-                return;
-            }
-        }
-    }
-
     void dispose() {
         for(int i = 0; elements[i].uid != NULL; i++) {
             elements[i].Dispose();
@@ -418,33 +455,13 @@ public:
         return;
     }
 
-    void setCell(vga_cell cell, uint32_t X, uint32_t Y)  {
-#ifndef linux
-        vga_cell * vga = (vga_cell *)DEF_VRAM_BASE;
-        vga[X + Y * MAX_COL] = cell;
-#else
-        vga_cell * vga = getVgaBuffer();
-        vga[X + Y * MAX_COL] = cell;
-        flushVgaBuffer();
-#endif
-    }
-
-    vga_cell getCell( uint32_t X, uint32_t Y) {
-#ifndef linux
-        vga_cell * vga = (vga_cell *)DEF_VRAM_BASE;
-#else
-        vga_cell * vga = getVgaBuffer();
-#endif
-        return vga[X + Y * MAX_COL];
-    }
-
 private:
     TScreen() {
 
     }
 };
 
-class TWindow : public TElement{
+class TWindow : public TContainer {
 protected:
     char title [80];
     virtual void Initialize() {
@@ -503,7 +520,7 @@ protected:
 
 
     virtual void Dispose() {
-        printf("TButton dispose!");
+        //printf("TButton dispose!");
     }
 public:
     TButton() {

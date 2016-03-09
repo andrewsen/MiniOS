@@ -22,6 +22,7 @@
 #include "timer.h"
 #include "cpu.h"
 #include "fs.h"
+#include "lab2.h"
 //#include "paging.h"
 //#include "interrupt.h"
 
@@ -40,7 +41,11 @@ void kb_irq(registers_t *reg) {
     //printf("Keyboard interrupt!");
 }
 void ms_irq(registers_t *reg) {
-	printf("Mouse interrupt!");
+    printf("Mouse interrupt!");
+}
+void test_irq(registers_t *reg) {
+    printf("Test interrupt!");
+
 }
     
     
@@ -50,14 +55,14 @@ void main(struct multiboot *mboot_ptr)
     clear_screen();
 
     set_color(Green);
+
     if(mboot_ptr->mods_count == 0) panic("Initial RAM Disk wasn't loaded!", 1, -1);
     printf("RD end: 0x%X, RD addr: 0x%X\n", *(uint32_t*)(mboot_ptr->mods_addr+4), *((uint32_t*)mboot_ptr->mods_addr));
     location = *((uint32_t*)mboot_ptr->mods_addr);
-    setKmmBottom((void*)(*(uint32_t*)(mboot_ptr->mods_addr+4) + 1024));
+    //setKmmBottom((void*)(*(uint32_t*)(mboot_ptr->mods_addr+4) + 1024));
     //uint32_t m1 = 0xDEADC0DE;
     //uint32_t mh = 0x0;
     //uint32_t m2 = 0x1488EBA2;
-
     //ASMV("int $33");
     printf("Magic: 0x%X\n", *(uint64_t*)(void*)location);
     //uint16_t ** collection = (uint16_t**)DEF_VRAM_BASE;
@@ -67,22 +72,31 @@ void main(struct multiboot *mboot_ptr)
     //outb(0x60, 0xF4);
 
     __enable_fpu();
+    init_acpi();
+
+
 
     printf("\nBegin booting... %x\n", mboot_ptr->mem_upper);
-	//int i = 100 / 16;
-	init_gdt ();
+    //int i = 100 / 16;
+    init_gdt ();
     printf("GDT initialized!\n");
-	init_idt ();
+    init_idt ();
     printf("IDT initialized!\n");
+    //ASMV("hlt");
+    //return;
     register_interrupt_handler (IRQ1, kb_irq);
     register_interrupt_handler (IRQ12, ms_irq);
+    register_interrupt_handler (0x3, test_irq);
+    register_interrupt_handler (0xd, test_irq);
 
     printf("Interrupt 0x3:\n");
     //ASMV("int $0x3");
     printf("Interrupt 32:\n");
-    ASMV("int $33");
+    ASMV("int $3");
 
-    //initialise_paging();
+
+
+    //return;
 #ifndef __NO_PAGING
     init_pmm (0x1000);
     init_vmm ();
@@ -94,19 +108,21 @@ void main(struct multiboot *mboot_ptr)
     //printf("Reserving 1Kb of RAM...\n");
     kmem = (char*)kmalloc(1024);
     printf("Reserved! 0x%X\n", (int)(int*)kmem);
+    initialise_paging();
     int * kmem2 = (int*)kmalloc(sizeof(int) * 32);
     printf("Reserved! 0x%X\n", (int)(void*)kmem2);
     uint16_t* kmem3 = (uint16_t*)kmalloc(sizeof(uint16_t) * 4);
     printf("Reserved! 0x%X\n", (int)(void*)kmem3);
+    //printf("Interrupt 14:\n");
+    //ASMV("int $14");
     //putchar(200);
     //printf("\n");
     //init_interrupts();
     //set_isr(__get_kb_isr, 34);
     //set_isr(__get_kb_isr, 0x34);
     //INTS(true);
-    
-    init_acpi();
-    printf("ACPI Inited!\n");
+
+    printf("ACPI inited!\n");
 
     //for(int i = 0; i < 0xFFFFFFFF; i++) {
     //    if(*(uint32_t*)(void*)(location + i) == 0xEF53FFFF) {
@@ -115,17 +131,26 @@ void main(struct multiboot *mboot_ptr)
     //}
     //printf("No magic\n");
     set_color(White);
-    //printf("Booting complete!\n\tSenko Operating System release - 0.0.5-dev\nType 'help' to see command list\n");
+    printf("Booting complete!\n\t\tSenko Kernel release - 0.0.5-dev\nType 'help' to see command list\n");
     //printf("testing C++:\n");
     //redraw();
 
     //clear_screen();
     //printf();
     command_routine();
+
+    /*
+    init_gdt ();
+    init_idt ();
+    initialise_paging();
+    printf("Paging inited!");
+    ASMV("hlt");
+    */
 }
 
 void command_routine() {
-
+    //char history[255][255];
+    int hidx = 0;
     while (true) {
         char ** coms;
 
@@ -159,15 +184,37 @@ void command_routine() {
         else if(!strcmp(coms[0], "tail")) show_last_rows(0);
         else if(!strcmp(coms[0], "tui")) redraw();
         else if(!strcmp(coms[0], "timer")) wait(1000);
+        else if(!strcmp(coms[0], "lab2")) main_lab2();
         else if(!strcmp(coms[0], "beep")) make_sound();
+        else if(!strcmp(coms[0], "dofault")) {
+            u32 *ptr = 0xABCDEF00;
+            u32 pf = *ptr;
+        }
+
+        else if(!strcmp(coms[0], "keycode")) { // up - 72, down - 80
+            printf("\n");
+            u8 key = keyboard_getkey();
+            while((char)keycode_to_ascii (key) != 'Q')
+            {
+                printf("key: %d, char: %c\n", (int)key, keycode_to_ascii (key));
+                key = keyboard_getkey();
+            }
+        }
         else if(!strcmp(coms[0], "memsize")) {
             //ASMV("");
             printf("Temporary unsupported :(");
         }
         else if(!strcmp(coms[0], "file")) {
+            char f[255];
+            printf("\n");
+            scanf(f);
+            printf("Trying to read file '%s'", f);
             char buf[10];
-            ext2_read_file(NULL, NULL, "/hello.txt", buf, 10, 0);
-            printf("\nFILE: %s\n", buf);
+            u32 ubuf[10];
+            ubuf[0] = ext2_get_file_size(f);
+            ext2_read_file(NULL, NULL, f, buf, ubuf, 0);
+            printf("\nFILE: \n%s\n", buf);
+            printf("File was read correctly (size=%d)", ubuf[0]);
         }
         else if(!strcmp(coms[0], "panic")) {
             int l = 0x3;
@@ -192,7 +239,7 @@ void command_routine() {
             printf("\nSenko Operating System - it is simple home OS developed by me\nwithout any codebase!\n");
             printf("Unfortunatly russian is not supported now :(\n%s %s", __DATE__, __TIME__);
         }
-        else printf("\nUnknown command: '%s', '%s'", coms[0], coms[1]);
+        else printf("\nUnknown command: '%s'", coms[0]);
 
         //kfree(coms);
     }
@@ -202,13 +249,14 @@ void help() {
     printf("\nCommands:\n");
     printf("  help\t\t-show this message\n");
     printf("  shutdown\t-exit OS\n");
-    printf("  tui\t-switch to TUI\n");
+    printf("  tui\t\t-switch to TUI\n");
     printf("  reboot\t-reboot\n");
     printf("  pciscan\t-Scan PCI devices\n");
     printf("  clear\t\t-clear screen\n");
     printf("  about\t\t-about OS\n");
     printf("  panic\t\t-test kernel panic\n");
     printf("  chcolor\t-change text and background color\n");
+    printf("  lab2\t\t-run lab 2\n");
     return;
 }
 
@@ -310,6 +358,7 @@ void panic(char * text, int level, int32_t data) {
         wait_s(10);
         ASMV("cli");
         printf("\nRebooting!");
+        //ASMV("hlt");
         reboot();
     }
     ASMV("sti");

@@ -1,209 +1,225 @@
+// paging.c -- Defines the interface for and structures relating to paging.
+//             Written for JamesM's kernel development tutorials.
 
-#include "stdlib.h"
 #include "paging.h"
-#include "string.h"
-// Набор bitset для фреймов.
-uint32_t *frames;
-uint32_t nframes;
+#include "heap.h"
 
-extern heap_t *kheap; 
+// The kernel's page directory
+page_directory_t *kernel_directory=0;
 
-// Определено в kheap.c
-extern uint32_t placement_address;
+// The current page directory;
+page_directory_t *current_directory=0;
 
-void enable_paging();
+// A bitset of frames - used or free.
+u32 *frames;
+u32 nframes;
 
-page_directory_t* kernel_directory;
-page_directory_t* current_directory;
+// Defined in kheap.c
+extern u32 placement_address;
+extern heap_t *kheap;
 
-// В алгоритмах для bitset используются макросы.
+// Macros used in the bitset algorithms.
 #define INDEX_FROM_BIT(a) (a/(8*4))
 #define OFFSET_FROM_BIT(a) (a%(8*4))
 
-// Статическая функция для установки бита в наборе bitset для фреймов
-static void set_frame(uint32_t frame_addr)
+// Static function to set a bit in the frames bitset
+static void set_frame(u32 frame_addr)
 {
-   uint32_t frame = frame_addr/0x1000;
-   uint32_t idx = INDEX_FROM_BIT(frame);
-   uint32_t off = OFFSET_FROM_BIT(frame);
-   frames[idx] |= (0x1 << off);
+    u32 frame = frame_addr/0x1000;
+    u32 idx = INDEX_FROM_BIT(frame);
+    u32 off = OFFSET_FROM_BIT(frame);
+    frames[idx] |= (0x1 << off);
 }
 
-// Статическая функция для сброса бита в наборе bitset для фреймов
-static void clear_frame(uint32_t frame_addr)
+// Static function to clear a bit in the frames bitset
+static void clear_frame(u32 frame_addr)
 {
-   uint32_t frame = frame_addr/0x1000;
-   uint32_t idx = INDEX_FROM_BIT(frame);
-   uint32_t off = OFFSET_FROM_BIT(frame);
-   frames[idx] &= ~(0x1 << off);
+    u32 frame = frame_addr/0x1000;
+    u32 idx = INDEX_FROM_BIT(frame);
+    u32 off = OFFSET_FROM_BIT(frame);
+    frames[idx] &= ~(0x1 << off);
 }
 
-// Статическая функция для проверки, установлен ли бит
-static uint32_t test_frame(uint32_t frame_addr)
+// Static function to test if a bit is set.
+static u32 test_frame(u32 frame_addr)
 {
-   uint32_t frame = frame_addr/0x1000;
-   uint32_t idx = INDEX_FROM_BIT(frame);
-   uint32_t off = OFFSET_FROM_BIT(frame);
-   return (frames[idx] & (0x1 << off));
+    u32 frame = frame_addr/0x1000;
+    u32 idx = INDEX_FROM_BIT(frame);
+    u32 off = OFFSET_FROM_BIT(frame);
+    return (frames[idx] & (0x1 << off));
 }
 
-// Статическая функция для поиска первого свободного фрейма
-static uint32_t first_frame()
+// Static function to find the first free frame.
+static u32 first_frame()
 {
-   uint32_t i, j;
-   for (i = 0; i < INDEX_FROM_BIT(nframes); i++)
-   {
-       if (frames[i] != 0xFFFFFFFF) // нечего не освобождаем, сразу выходим.
-       {
-           // по меньшей мере, здесь один свободный бит
-           for (j = 0; j < 32; j++)
-           {
-               uint32_t toTest = 0x1 << j;
-               if ( !(frames[i]&toTest) )
-               {
-                   return i*4*8+j;
-               }
-           }
-       }
-   }
-} 
+    u32 i, j;
+    for (i = 0; i < INDEX_FROM_BIT(nframes); i++)
+    {
+        if (frames[i] != 0xFFFFFFFF) // nothing free, exit early.
+        {
+            // at least one bit is free here.
+            for (j = 0; j < 32; j++)
+            {
+                u32 toTest = 0x1 << j;
+                if ( !(frames[i]&toTest) )
+                {
+                    return i*4*8+j;
+                }
+            }
+        }
+    }
+}
 
-// Функция выделения фрейма.
+// Function to allocate a frame.
 void alloc_frame(page_t *page, int is_kernel, int is_writeable)
 {
-   if (page->frame != 0)
-   {
-       return; // Фрейм уже выделен, сразу возвращаемся.
-   }
-   else
-   {
-       uint32_t idx = first_frame(); // idx теперь является индексом первого свободного фрейма.
-       if (idx == (uint32_t)-1)
-       {
-           // PANIC это всего лишь макрос, которые выдает на экран сообщение, а затем переходит в бесконечный цикл.
-           PANIC("No free frames!");
-       }
-       set_frame(idx*0x1000); // Этот фрейм теперь наш!
-       page->present = 1; // Помечаем его как присутствующий.
-       page->rw = (is_writeable)?1:0; // Можно ли для страницы выполнять запись?
-       page->user = (is_kernel)?0:1; // Находится ли страница в пользовательском режиме?
-       page->frame = idx;
-   }
+    if (page->frame != 0)
+    {
+        return;
+    }
+    else
+    {
+        u32 idx = first_frame();
+        if (idx == (u32)-1)
+        {
+            // PANIC! no free frames!!
+        }
+        set_frame(idx*0x1000);
+        page->present = 1;
+        page->rw = (is_writeable)?1:0;
+        page->user = (is_kernel)?0:1;
+        page->frame = idx;
+    }
 }
 
 // Function to deallocate a frame.
 void free_frame(page_t *page)
 {
-   uint32_t frame;
-   if (!(frame=page->frame))
-   {
-       return; // Указанной страницы теперь фактически нет в выделенном фрейме!
-   }
-   else
-   {
-       clear_frame(frame); // фрейм теперь снова свободен.
-       page->frame = 0x0; // Страницы теперь во фрейме нет.
-   }
-} 
+    u32 frame;
+    if (!(frame=page->frame))
+    {
+        return;
+    }
+    else
+    {
+        clear_frame(frame);
+        page->frame = 0x0;
+    }
+}
 
 void initialise_paging()
 {
-   // Размер физической памяти. Сейчас мы предполагаем,
-   // что размер равен 16 MB.
-   uint32_t mem_end_page = 0x4000000;
+    // The size of physical memory. For the moment we
+    // assume it is 16MB big.
+    u32 mem_end_page = 0x1000000;
 
-   nframes = mem_end_page / 0x1000;
-   frames = (uint32_t*)kmalloc(INDEX_FROM_BIT(nframes));
-   memset(frames, 0, INDEX_FROM_BIT(nframes));
+    nframes = mem_end_page / 0x1000;
+    frames = (u32*)kmalloc(INDEX_FROM_BIT(nframes));
+    memset(frames, 0, INDEX_FROM_BIT(nframes));
 
-   // Давайте создадим директорий страниц.
-   kernel_directory = (page_directory_t*)kmalloc_a(sizeof(page_directory_t));
-   memset(kernel_directory, 0, sizeof(page_directory_t));
-   current_directory = kernel_directory;
+    // Let's make a page directory.
+    kernel_directory = (page_directory_t*)kmalloc_a(sizeof(page_directory_t));
+    memset(kernel_directory, 0, sizeof(page_directory_t));
+    current_directory = kernel_directory;
 
-   // Нам нужна карта идентичности (физический адрес = виртуальный адрес) с адреса
-   // 0x0 до конца используемой памяти с тем, чтобы у нас к ним был прозрачный 
-   // доступ как если бы страничная организация памяти не использовалась.
-   // ЗАМЕТЬТЕ, что мы преднамеренно используем цикл while.
-   // Внутри тела цикла мы фактически изменяем адрес placement_address
-   // с помощью вызова функции kmalloc(). Цикл while используется здесь, т.к. выход
-   // из цикла динамически, а не один раз после запуска цикла.
-   int i = 0;
-   for (i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += 0x1000)
-       get_page(i, 1, kernel_directory); 
-       
-   // Теперь размещаем страницы, для которых ранее было выполнено отображение.
-   for (i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += 0x1000)
-       alloc_frame( get_page(i, 1, kernel_directory), 0, 0);
+    // Map some pages in the kernel heap area.
+    // Here we call get_page but not alloc_frame. This causes page_table_t's
+    // to be created where necessary. We can't allocate frames yet because they
+    // they need to be identity mapped first below, and yet we can't increase
+    // placement_address between identity mapping and enabling the heap!
+    int i = 0;
+    for (i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += 0x1000)
+        get_page(i, 1, kernel_directory);
 
-   // Прежде, чем мы включим страничную организацию памяти, нам нужно 
-   // зарегистрировать обработчик неверного обращения к страницам.
-   register_interrupt_handler(14, page_fault);
+    // We need to identity map (phys addr = virt addr) from
+    // 0x0 to the end of used memory, so we can access this
+    // transparently, as if paging wasn't enabled.
+    // NOTE that we use a while loop here deliberately.
+    // inside the loop body we actually change placement_address
+    // by calling kmalloc(). A while loop causes this to be
+    // computed on-the-fly rather than once at the start.
+    // Allocate a lil' bit extra so the kernel heap can be
+    // initialised properly.
+    i = 0;
+    while (i < placement_address+0x1000)
+    {
+        // Kernel code is readable but not writeable from userspace.
+        alloc_frame( get_page(i, 1, kernel_directory), 0, 0);
+        i += 0x1000;
+    }
 
-   // Теперь включаем страницную организацию памяти!
-   switch_page_directory(kernel_directory);
+    // Now allocate those pages we mapped earlier.
+    for (i = KHEAP_START; i < KHEAP_START+KHEAP_INITIAL_SIZE; i += 0x1000)
+        alloc_frame( get_page(i, 1, kernel_directory), 0, 0);
 
-   // Инициализируем кучу ядра .
-   kheap = create_heap(KHEAP_START, KHEAP_START+KHEAP_INITIAL_SIZE, 0xCFFFF000, 0, 0); 
+    // Before we enable paging, we must register our page fault handler.
+    register_interrupt_handler(14, page_fault);
+
+    // Now, enable paging!
+    switch_page_directory(kernel_directory);
+
+    // Initialise the kernel heap.
+    kheap = create_heap(KHEAP_START, KHEAP_START+KHEAP_INITIAL_SIZE, 0xCFFFF000, 0, 0);
 }
 
 void switch_page_directory(page_directory_t *dir)
 {
-   current_directory = dir;
-   asm volatile("mov %0, %%cr3":: "r"(&dir->tablesPhysical));
-   //uint32_t cr0;
-   //asm volatile("mov %%cr0, %0": "=r"(cr0));
-   //cr0 |= 0x80000000; // Enable paging!
-   //asm volatile("mov %0, %%cr0":: "r"(cr0));
-   enable_paging();
+    current_directory = dir;
+    asm volatile("mov %0, %%cr3":: "r"(&dir->tablesPhysical));
+    u32 cr0;
+    asm volatile("mov %%cr0, %0": "=r"(cr0));
+    cr0 |= 0x80000000; // Enable paging!
+    asm volatile("mov %0, %%cr0":: "r"(cr0));
 }
 
-page_t *get_page(uint32_t address, int make, page_directory_t *dir)
+page_t *get_page(u32 address, int make, page_directory_t *dir)
 {
-   // Помещаем адрес в индекс.
-   address /= 0x1000;
-   // Находим таблицу страниц, в которой есть этот адрес.
-   uint32_t table_idx = address / 1024;
-   if (dir->tables[table_idx]) // Если эта таблица уже назначена
-   {
-       return &dir->tables[table_idx]->pages[address%1024];
-   }
-   else if(make)
-   {
-       uint32_t tmp;
-       dir->tables[table_idx] = (page_table_t*)kmalloc_ap(sizeof(page_table_t), &tmp);
-       memset(dir->tables[table_idx], 0, 0x1000);
-       dir->tablesPhysical[table_idx] = tmp | 0x7; // PRESENT, RW, US.
-       return &dir->tables[table_idx]->pages[address%1024];
-   }
-   else
-   {
-       return 0;
-   }
+    // Turn the address into an index.
+    address /= 0x1000;
+    // Find the page table containing this address.
+    u32 table_idx = address / 1024;
+
+    if (dir->tables[table_idx]) // If this table is already assigned
+    {
+        return &dir->tables[table_idx]->pages[address%1024];
+    }
+    else if(make)
+    {
+        u32 tmp;
+        dir->tables[table_idx] = (page_table_t*)kmalloc_ap(sizeof(page_table_t), &tmp);
+        memset(dir->tables[table_idx], 0, 0x1000);
+        dir->tablesPhysical[table_idx] = tmp | 0x7; // PRESENT, RW, US.
+        return &dir->tables[table_idx]->pages[address%1024];
+    }
+    else
+    {
+        return 0;
+    }
 }
+
 
 void page_fault(registers_t regs)
 {
-   // Возникло прерывания неверного обращения к странице - page fault.
-   // Адрес прерывания запоминается в регистре CR2.
-   uint32_t faulting_address;
-   asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
+    // A page fault has occurred.
+    // The faulting address is stored in the CR2 register.
+    u32 faulting_address;
+    asm volatile("mov %%cr2, %0" : "=r" (faulting_address));
 
-   // Код ошибки подробно сообщит нам о том, что случилось.
-   int present   = !(regs.err_code & 0x1); // Страница отсутствует
-   int rw = regs.err_code & 0x2;           // Операция записи?
-   int us = regs.err_code & 0x4;           // Процессор находится в пользовательском режиме?
-   int reserved = regs.err_code & 0x8;     // В записи страницы переписаны биты, зарезервированные для нужд процессора?
-   int id = regs.err_code & 0x10;          // Причина во время выборки инструкции?
+    // The error code gives us details of what happened.
+    int present   = !(regs.err_code & 0x1); // Page not present
+    int rw = regs.err_code & 0x2;           // Write operation?
+    int us = regs.err_code & 0x4;           // Processor was in user-mode?
+    int reserved = regs.err_code & 0x8;     // Overwritten CPU-reserved bits of page entry?
+    int id = regs.err_code & 0x10;          // Caused by an instruction fetch?
 
-   // Выдача сообщения об ошибке.
-   printf("Page fault! ( ");
-   if (present) {printf("present ");}
-   if (rw) {printf("read-only ");}
-   if (us) {printf("user-mode ");}
-   if (reserved) {printf("reserved ");}
-   printf(") at 0x");
-   printf("%x", faulting_address);
-   printf("\n");
-   PANIC("Page fault");
-} 
+    // Output an error message.
+    printf("Page fault! ( ");
+    if (present) {printf("present ");}
+    if (rw) {printf("read-only ");}
+    if (us) {printf("user-mode ");}
+    if (reserved) {printf("reserved ");}
+    printf(") at 0x");
+    printf(faulting_address);
+    printf("\n");
+    PANIC("Page fault");
+}

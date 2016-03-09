@@ -18,7 +18,7 @@ extern "C" void redraw() {
     window.setHeigh(MAX_ROW);
     window.setWidth(MAX_COL);
     window.setPos(TPoint(0, 0));
-    window.setBackColor(Cyan);
+    window.setBackColor(Green);
 
     screen->addElement(&window);
 
@@ -60,6 +60,7 @@ extern "C" void redraw() {
     screen->removeElement(uids[2]);
     wait_s(1);
     screen->removeElement(&window);
+    screen->dispose();
     /*
     for (int i = 0; i < 5; i++) {
         char name [10] = "button_";

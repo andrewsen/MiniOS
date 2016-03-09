@@ -34,6 +34,7 @@ mboot:
 
 global loader:function loader.end-loader ; Kernel entry point.
 extern main			                  ; This is the entry point of our C code
+extern reboot
 
 loader:
     cli                         ; Disable interrupts.
@@ -41,7 +42,8 @@ loader:
     push ebx                  	; Push a pointer to the multiboot info structure.
     mov ebp, 0                  ; Initialise the base pointer to zero so we can
 				; terminate stack traces here.
-    call main		            ; call our main() function.
+    call main		            ; call our main() function
+	call reboot					; reboot kernel 
     ;jmp $                       ; Enter an infinite loop, to stop the processor
 .end:                           ; from executing whatever rubbish is in the memory
 				; after our kernel!

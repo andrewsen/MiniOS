@@ -125,9 +125,9 @@ static void idt_set_gate (uint8_t num, uint32_t base, uint16_t sel, uint8_t flag
 // This gets called from our ASM interrupt handler stub.
 void idt_handler (registers_t *regs)
 {
-   printf("\nRecieved interrupt: 0x");
-   printf("%x", regs->int_no);
-   printf("\n");
+   //printf("\nRecieved interrupt: 0x");
+   //printf("%x", regs->int_no);
+   //printf("\n");
 
   if (interrupt_handlers [regs->int_no])
     interrupt_handlers [regs->int_no] (regs);

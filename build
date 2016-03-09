@@ -1,8 +1,17 @@
 #! /bin/bash
 
 fbuild() {
+	fmkrdfs
 	make all && sudo make
-	chown andrew hdd.img kernel.bin
+	chown senko hdd.img kernel.bin initrd.img
+}
+
+fmkrdfs() {
+	sudo dd if=/dev/zero of=initrd.img count=16484
+	sudo mkfs.ext2 -F initrd.img
+	sudo mount -o loop initrd.img ./hdd
+	sudo cp -R ./rdfs/hello.txt ./hdd/ 		#FIXME!
+	sudo umount ./hdd
 }
 
 CFILE=`readlink -e "$0"`
@@ -21,10 +30,13 @@ case $1 in
 	;;
 --rebuild | -R)
 	make rebuild
-	chown andrew hdd.img kernel.bin
+	chown senko hdd.img kernel.bin
 	;;
 --build | -b)
 	fbuild
+	;;
+--mk-initrd | -i)
+	fmkrdfs
 	;;
 --clean | -c)
 	make clean
@@ -45,7 +57,7 @@ case $1 in
 		echo "Invalid parameters!"
 	fi
 	;;
---help | -h)
+--help | -h | *)
 	echo \
 	"Использование: $0 [OPTION]...
 Сборка образа ОС.
@@ -54,10 +66,11 @@ Options:
   -d, --debug 	             run OS in debug mode with cgdb
   -b, --build                build OS and image
   -R, --rebuild              rebuild OS and image
-  -w, --write             	 write OS image
+  -w, --write                write OS image
   -r, --run  	             run OS on emulator
   -c, --clean	             clean object and executable files (do make clean)
-  -h, --help                 display this help and exit"
+  -h, --help                 display this help and exit
+  --mk-initrd                make initrd"
 	;;
 *)
 	fbuild

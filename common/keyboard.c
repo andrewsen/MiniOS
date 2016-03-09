@@ -138,7 +138,7 @@ setkbdled (int ledstatus)
 	asm_inb (KBD_DATA, &gomi);
 }
 
-static u8
+u8
 keyboard_getkey (void)
 {
 	u8 data;
@@ -163,7 +163,7 @@ keyboard_flush (void)
 	} while (status & 1);
 }
 
-static int
+int
 keycode_to_ascii (u8 key)
 {
 	if (key & 0x80)

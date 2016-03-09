@@ -19,6 +19,7 @@ int scanf(char * chars) {
 			++i;
 		}
 	}
+    printf("\n");
 	chars[i] = '\0';
 	return i-1;
 }

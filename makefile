@@ -29,20 +29,24 @@ OBJFILES = \
     common/keyboard.o  \
     common/heap.o  \
     common/paging.o  \
+    common/lab2.o  \
     kernel.o
 
 image:
 	@echo "Creating hdd.img..."
 	@dd if=/dev/zero of=./hdd.img bs=512 count=32130 1>/dev/null 2>&1
 	
+	@echo "Deataching /dev/loop1 and /dev/loop2..."
+	#@losetup -d /dev/loop1
+	#@losetup -d /dev/loop2
 	@echo "Creating bootable first FAT32 partition..."
 	@losetup /dev/loop1 ./hdd.img
 	@(echo c; echo u; echo n; echo p; echo 1; echo ;  echo ; echo a; echo 1; echo t; echo c; echo w;) | fdisk /dev/loop1 1>/dev/null 2>&1 || true
 
 	@echo "Mounting partition to /dev/loop2..."
 	@losetup /dev/loop2 ./hdd.img \
-	--offset	`echo \`fdisk -lu /dev/loop1 | sed -n 10p | awk '{print $$3}'\`*512 | bc` \
-	--sizelimit `echo \`fdisk -lu /dev/loop1 | sed -n 10p | awk '{print $$4}'\`*512 | bc`
+	--offset	32256 \ #`echo \`fdisk -lu /dev/loop1 | sed -n 10p | awk '{print $$3}'\`*512 | bc` \
+	--sizelimit 16450048 \ #`echo \`fdisk -lu /dev/loop1 | sed -n 10p | awk '{print $$4}'\`*512 | bc`
 	@losetup -d /dev/loop1
 
 	@echo "Format partition..."

@@ -37,7 +37,7 @@ void free (void *p);
 
 #define kmalloc_2(sz, a, phys) kmalloc(sz)
  //void free(void *ptr);
-void* kmalloc(size_t sz);
+//void* kmalloc(size_t sz);
 void kfree(void* p);
 
 //uint32_t kmalloc_1(uint32_t sz, int align);
@@ -45,9 +45,9 @@ void kfree(void* p);
 //uint32_t kmalloc_2(uint32_t sz, int align, uint32_t *phys);
  void setKmmBottom(void * b);
 
- void * kmalloc_ap(size_t size, uint32_t * phys);
+ //void * kmalloc_ap(size_t size, uint32_t * phys);
 
- void * kmalloc_a(size_t size);
+ //void * kmalloc_a(size_t size);
 
 
 //#define malloc kmalloc

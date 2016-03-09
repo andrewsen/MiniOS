@@ -1,67 +1,70 @@
+// paging.h -- Defines the interface for and structures relating to paging.
+//             Written for JamesM's kernel development tutorials.
+
 #ifndef PAGING_H
 #define PAGING_H
 
-#include "types.h"
+#include "asm.h"
 #include "idt.h"
-#include "heap.h"
-#include "stdlib.h"
 
 typedef struct page
 {
-   uint32_t present    : 1;   // Страница присутствует в памяти
-   uint32_t rw         : 1;   // Если сброшен, то страница только для чтения, если установлен, то страница для чтения и записи
-   uint32_t user       : 1;   // Если сброшен, то уровень супервизора
-   uint32_t accessed   : 1;   // Было ли обращение к странице после последнего ее обновления?
-   uint32_t dirty      : 1;   // Выполнялась ли запись на страницу после последнего ее обновления?
-   uint32_t unused     : 7;   // Все неиспользуемые и зарезервированные биты
-   uint32_t frame      : 20;  // Адрес фрейма (сдвинут вправо на 12 бит)
+    u32 present    : 1;   // Page present in memory
+    u32 rw         : 1;   // Read-only if clear, readwrite if set
+    u32 user       : 1;   // Supervisor level only if clear
+    u32 accessed   : 1;   // Has the page been accessed since last refresh?
+    u32 dirty      : 1;   // Has the page been written to since last refresh?
+    u32 unused     : 7;   // Amalgamation of unused and reserved bits
+    u32 frame      : 20;  // Frame address (shifted right 12 bits)
 } page_t;
 
 typedef struct page_table
 {
-   page_t pages[1024];
+    page_t pages[1024];
 } page_table_t;
 
 typedef struct page_directory
 {
-   /**
-      Массив указателей на таблицы страниц.
-   **/
-   page_table_t *tables[1024];
-   /**
-      Массив указателей на таблицы страниц, о которых говорилось выше, но указатели указывают *физическое*
-      местоположение, используемое при загрузке в регистр CR3.
-   **/
-   uint32_t tablesPhysical[1024];
-   /**
-      Физический адрес tablesPhysical. Его потребуется использовать в случае,
-      когда мы получаем в ядре память типа куча, а директорий может находиться
-      в любом месте виртуальной памяти.
-   **/
-   uint32_t physicalAddr;
+    /**
+       Array of pointers to pagetables.
+    **/
+    page_table_t *tables[1024];
+    /**
+       Array of pointers to the pagetables above, but gives their *physical*
+       location, for loading into the CR3 register.
+    **/
+    u32 tablesPhysical[1024];
+
+    /**
+       The physical address of tablesPhysical. This comes into play
+       when we get our kernel heap allocated and the directory
+       may be in a different location in virtual memory.
+    **/
+    u32 physicalAddr;
 } page_directory_t;
 
 /**
-  Настройка среды окружения, директориев страниц и т.д. и 
-  включение страничной организации памяти.
+   Sets up the environment, page directories etc and
+   enables paging.
 **/
 void initialise_paging();
 
 /**
-  Загружает указанны директорий страниц в регистр CR3.
+   Causes the specified page directory to be loaded into the
+   CR3 register.
 **/
 void switch_page_directory(page_directory_t *new);
 
 /**
-  Поиск указателя на необходимую страницу.
-  Если make == 1 в таблице страниц, в которой эта страница должна располагаться,
-  то страница не создана - создайте страницу!
+   Retrieves a pointer to the page required.
+   If make == 1, if the page-table in which this page should
+   reside isn't created, create it!
 **/
-page_t *get_page(uint32_t address, int make, page_directory_t *dir);
+page_t *get_page(u32 address, int make, page_directory_t *dir);
 
 /**
-  Обаботчик некорректного обращения к страницам.
+   Handler for page faults.
 **/
-void page_fault(registers_t regs); 
+void page_fault(registers_t regs);
 
 #endif

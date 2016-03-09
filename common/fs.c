@@ -74,7 +74,7 @@ void read_sb()
 /* Проверка идентификатора файловой системы (MAGIC-номер) */
     //printf("\nEXT2: Magic: 0x%x, loc: 0x%x", sb.s_magic, location);
     if(sb.s_magic != EXT2_SUPER_MAGIC) {
-        panic("EXT2: Invalid sb magic!", 3, -1);
+        panic("EXT2: Invalid sb magic!", 3, sb.s_magic);
     //exit(-1);
     }
 
@@ -308,7 +308,37 @@ int read_file_blocks(struct ext2_inode *in, u8 *data_buff, u32 *num, u32 seek)
     return 0;
 }
 
+int ext2_get_file_size(u8 *full_path) {
+    struct ext2_inode in;
+    unsigned char tmp_buff[EXT2_NAME_LEN];
+    static int i = 1;
+    int n, i_num;
 
+    read_sb();
+    read_gd();
+    get_root_dentry();
+
+    memset(tmp_buff, 0, sizeof(tmp_buff));
+
+    for(n = 0 ; n < EXT2_NAME_LEN; n++, i++) {
+        tmp_buff[n] = full_path[i];
+        if((tmp_buff[n] == '/') || (tmp_buff[n] == '\0')) {
+        i++;
+        break;
+        }
+    }
+    tmp_buff[n] = '\0';
+
+    i_num = get_i_num(tmp_buff);
+    if(i_num < 0) {
+        printf("No such file\n");
+        return -1;
+        //exit(-1);
+    }
+    get_inode(i_num, &in);
+
+    return in.i_size;
+}
 
 int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *num, u32 seek)
 {
@@ -363,6 +393,7 @@ int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *
         }
         tmp_buff[n] = '\0';
 
+        printf("tmp_buf = %s\n", tmp_buff);
         i_num = get_i_num(tmp_buff);
         if(i_num < 0) {
             printf("No such file\n");

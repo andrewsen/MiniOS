@@ -34,6 +34,8 @@ char get_row();
 
 void put_cell(struct vga_cell cell, int row, int col);
 char str_to_byte(char * str);
+int str_to_int(char * a);
+long str_to_long(char * a);
 void show_last_rows(unsigned char from);
 
 #endif

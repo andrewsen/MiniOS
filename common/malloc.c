@@ -14,6 +14,7 @@
  #include        "assert.h"
 #include "heap.h"
 
+#if 0
  extern heap_t *kheap;
 
  #if _EM_WSIZE == _EM_PSIZE
@@ -97,9 +98,9 @@
  void *
  kmalloc(size_t size) //Align _sbrk NextSlot assert? NextFree
  {
-     if(kheap != 0) {
-         return alloc(size, 1, kheap);
-     }
+     //if(kheap != 0) {
+     //    return alloc(size, 1, kheap);
+     //}
    register char *prev, *p, *next, *_new;
    register unsigned len, ntries;
  
@@ -205,11 +206,11 @@
  kfree(void *ptr)
  {
 
-     if(kheap != 0) {
-         free(ptr, kheap);
-         return;
+     //if(kheap != 0) {
+     //    free(ptr, kheap);
+     //    return;
          //return alloc(size, 1, kheap);
-     }
+     //}
    register char *prev, *next;
    char *p = ptr;
  
@@ -240,3 +241,4 @@
          }
    }
  }
+#endif

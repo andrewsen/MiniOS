@@ -168,24 +168,79 @@ void print_p1(char * p1) {
 
 
 char str_to_byte(char * str) {
-	if(strlen(str) != 2) {
-		printf("\nIllegel hex string: %s\n", str);
-		return get_color_code();
-	}
-	char one = 0, two = 0;
-	if('A' <= str[0] && str[0] <= 'F') one = str[0] - 55;
-	else if('0' <= str[0] && str[0] <= '9') one = str[0] - 48;
-	else printf("\nUnknown character!\n");
-	//printf("\nOne: %d", one);
-	
-	if('A' <= str[1] && str[1] <= 'F') two = str[1] - 55;
-	else if('0' <= str[1] && str[1] <= '9') two = str[1] - 48;
-	else printf("\nUnknown character!\n");
-	//printf("\nTwo: %d", two);
-	
-	one <<= 4;
-	printf("\nColor: %X", one | two);
-	return one | two;
+    if(strlen(str) != 2) {
+        printf("\nIllegal hex string: %s\n", str);
+        return get_color_code();
+    }
+    char one = 0, two = 0;
+    if('A' <= str[0] && str[0] <= 'F') one = str[0] - 55;
+    else if('0' <= str[0] && str[0] <= '9') one = str[0] - 48;
+    else printf("\nUnknown character!\n");
+    //printf("\nOne: %d", one);
+
+    if('A' <= str[1] && str[1] <= 'F') two = str[1] - 55;
+    else if('0' <= str[1] && str[1] <= '9') two = str[1] - 48;
+    else printf("\nUnknown character!\n");
+    //printf("\nTwo: %d", two);
+
+    one <<= 4;
+    printf("\nColor: %X", one | two);
+    return one | two;
+}
+
+int str_to_int(char * a) {
+    int c, sign, offset, n;
+
+    if (a[0] == '-') {  // Handle negative integers
+        sign = -1;
+    }
+
+    if (sign == -1) {  // Set starting position to convert
+        offset = 1;
+    }
+    else {
+        offset = 0;
+    }
+
+    n = 0;
+
+    for (c = offset; a[c] != '\0'; c++) {
+        n = n * 10 + a[c] - '0';
+    }
+
+    if (sign == -1) {
+        n = -n;
+    }
+
+    return n;
+}
+
+long str_to_long(char * a) {
+    int c, sign, offset;
+    long n;
+
+    if (a[0] == '-') {  // Handle negative integers
+        sign = -1;
+    }
+
+    if (sign == -1) {  // Set starting position to convert
+        offset = 1;
+    }
+    else {
+        offset = 0;
+    }
+
+    n = 0;
+
+    for (c = offset; a[c] != '\0'; c++) {
+        n = n * 10 + a[c] - '0';
+    }
+
+    if (sign == -1) {
+        n = -n;
+    }
+
+    return n;
 }
 
 
