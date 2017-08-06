@@ -23,6 +23,13 @@
 #include "cpu.h"
 #include "fs.h"
 #include "lab2.h"
+#include "amo/interpolation.h"
+
+//extern void screen_write(int x, int y, const char* text);
+extern void start_session(int height, int width);
+extern int old_vm_entry(int argc, char *argv);
+extern int vm_entry(int argc, char **argv);
+extern void json_test();
 //#include "paging.h"
 //#include "interrupt.h"
 
@@ -36,7 +43,7 @@ char * kmem;
 //	printf("\nKEYBOARD INTERRUPT\n");
 //}
 
-// Сюда поступает вызов из обработчика прерываний, написанного на ассемблере.
+// INTERRUPT HANDLERS
 void kb_irq(registers_t *reg) {
     //printf("Keyboard interrupt!");
 }
@@ -52,26 +59,40 @@ void test_irq(registers_t *reg) {
 void main(struct multiboot *mboot_ptr)
 {
     //set_color(Cyan << 4 | White);
+    uint heap_start = 0;
     clear_screen();
 
     set_color(Green);
 
     if(mboot_ptr->mods_count == 0) panic("Initial RAM Disk wasn't loaded!", 1, -1);
     printf("RD end: 0x%X, RD addr: 0x%X\n", *(uint32_t*)(mboot_ptr->mods_addr+4), *((uint32_t*)mboot_ptr->mods_addr));
-    location = *((uint32_t*)mboot_ptr->mods_addr);
+    location = *((uint32_t*)(mboot_ptr->mods_addr));
+    heap_start = *(uint32_t*)(mboot_ptr->mods_addr+4);
     //setKmmBottom((void*)(*(uint32_t*)(mboot_ptr->mods_addr+4) + 1024));
     //uint32_t m1 = 0xDEADC0DE;
     //uint32_t mh = 0x0;
     //uint32_t m2 = 0x1488EBA2;
     //ASMV("int $33");
-    printf("Magic: 0x%X\n", *(uint64_t*)(void*)location);
+    printf("Magic: 0x%X\n", *(uint32_t*)(void*)(location+1080) & 0xFFFF);
     //uint16_t ** collection = (uint16_t**)DEF_VRAM_BASE;
     //collection[0] = (uint16_t*)DEF_VRAM_BASE;
 
     //printf("UPPER: 0x%X",mboot_ptr->mem_upper);
     //outb(0x60, 0xF4);
 
-    __enable_fpu();
+    if(!enable_fpu())
+    {
+        int col = get_color();
+        set_color(Red);
+        printf("Can't enable fpu\n");
+        set_color(col);
+    }
+    else
+    {
+        printf("Fpu enabled\n");
+    }
+    //wait_s(5);
+
     init_acpi();
 
 
@@ -87,7 +108,7 @@ void main(struct multiboot *mboot_ptr)
     register_interrupt_handler (IRQ1, kb_irq);
     register_interrupt_handler (IRQ12, ms_irq);
     register_interrupt_handler (0x3, test_irq);
-    register_interrupt_handler (0xd, test_irq);
+    register_interrupt_handler (255, test_irq);
 
     printf("Interrupt 0x3:\n");
     //ASMV("int $0x3");
@@ -106,15 +127,18 @@ void main(struct multiboot *mboot_ptr)
     //INTS(false);
     //initialise_paging();
     //printf("Reserving 1Kb of RAM...\n");
+    init_memory_manager(heap_start, 2048);
+    printf("Memory manager inited\n");
     kmem = (char*)kmalloc(1024);
     printf("Reserved! 0x%X\n", (int)(int*)kmem);
-    initialise_paging();
+    //initialise_paging();
     int * kmem2 = (int*)kmalloc(sizeof(int) * 32);
     printf("Reserved! 0x%X\n", (int)(void*)kmem2);
+    kfree(kmem);
     uint16_t* kmem3 = (uint16_t*)kmalloc(sizeof(uint16_t) * 4);
     printf("Reserved! 0x%X\n", (int)(void*)kmem3);
     //printf("Interrupt 14:\n");
-    //ASMV("int $14");
+    ASMV("int $255");
     //putchar(200);
     //printf("\n");
     //init_interrupts();
@@ -136,7 +160,9 @@ void main(struct multiboot *mboot_ptr)
     //redraw();
 
     //clear_screen();
-    //printf();
+    //printf();    
+    //inter_main(0,0,0);
+    //printf("digit: %d\n", atoi("-42"));
     command_routine();
 
     /*
@@ -154,13 +180,13 @@ void command_routine() {
     while (true) {
         char ** coms;
 
-        printf("\n>>>");
+        printf("\nsenko@krnl$ ");
         char command[255];
         scanf(command);
 
         //printf("\naddr coms = '%d'\n", (int)coms);
         int q = 0;
-        coms = split(command, &q, ' ');
+        coms = strspl(command, &q, ' ');
         //printf("\naddr coms2 = '%u'\n", (uint32_t)coms);
 
         //printf("\ncoms[0] = '%s'\n", coms[0]);
@@ -182,10 +208,37 @@ void command_routine() {
             return;
         }
         else if(!strcmp(coms[0], "tail")) show_last_rows(0);
+        else if(!strcmp(coms[0], "oldvm"))
+        {
+            char args[80];// = "/kmain.sem";
+            scanf(args);
+            old_vm_entry(1, args);
+        }
+        else if(!strcmp(coms[0], "uvm"))
+        {
+            //scanf(args);
+            vm_entry(q, coms);
+        }
+        else if(!strcmp(coms[0], "json"))
+        {
+            json_test();
+        }
         else if(!strcmp(coms[0], "tui")) redraw();
         else if(!strcmp(coms[0], "timer")) wait(1000);
         else if(!strcmp(coms[0], "lab2")) main_lab2();
         else if(!strcmp(coms[0], "beep")) make_sound();
+        else if(!strcmp(coms[0], "gui"))
+        {
+            clear_screen();
+
+            start_session(600, 800);
+
+            // If we suddenly returns from GUI
+            make_sound();
+            wait(500);
+            reboot();
+            //DrawFractal();
+        }
         else if(!strcmp(coms[0], "dofault")) {
             u32 *ptr = 0xABCDEF00;
             u32 pf = *ptr;
@@ -205,16 +258,17 @@ void command_routine() {
             printf("Temporary unsupported :(");
         }
         else if(!strcmp(coms[0], "file")) {
-            char f[255];
-            printf("\n");
+            char f[EXT2_NAME_LEN];
+            //printf("\n");
             scanf(f);
-            printf("Trying to read file '%s'", f);
-            char buf[10];
-            u32 ubuf[10];
-            ubuf[0] = ext2_get_file_size(f);
-            ext2_read_file(NULL, NULL, f, buf, ubuf, 0);
+            //printf("Trying to read file '%s'", f);
+            printf("File type: %d\n", ext2_file_type(f));
+            char buf[512];
+            memset(buf, 0, 512);
+            u32 num = ext2_get_file_size(f);
+            ext2_read_file(NULL, NULL, f, buf, &num, 0);
             printf("\nFILE: \n%s\n", buf);
-            printf("File was read correctly (size=%d)", ubuf[0]);
+            printf("File was read correctly (size=%d)", num);
         }
         else if(!strcmp(coms[0], "panic")) {
             int l = 0x3;
@@ -236,8 +290,8 @@ void command_routine() {
         }
         else if(!strcmp(coms[0], "reboot")) reboot();
         else if(!strcmp(coms[0], "about")) {
-            printf("\nSenko Operating System - it is simple home OS developed by me\nwithout any codebase!\n");
-            printf("Unfortunatly russian is not supported now :(\n%s %s", __DATE__, __TIME__);
+            printf("\nSenko Operating System - it is simple home OS developed by me\n");
+            printf("Unfortunatly ukrainian is not supported now :(\n%s %s", __DATE__, __TIME__);
         }
         else printf("\nUnknown command: '%s'", coms[0]);
 
@@ -249,14 +303,11 @@ void help() {
     printf("\nCommands:\n");
     printf("  help\t\t-show this message\n");
     printf("  shutdown\t-exit OS\n");
-    printf("  tui\t\t-switch to TUI\n");
+    printf("  gui\t\t-switch to GUI\n");
     printf("  reboot\t-reboot\n");
-    printf("  pciscan\t-Scan PCI devices\n");
     printf("  clear\t\t-clear screen\n");
     printf("  about\t\t-about OS\n");
     printf("  panic\t\t-test kernel panic\n");
-    printf("  chcolor\t-change text and background color\n");
-    printf("  lab2\t\t-run lab 2\n");
     return;
 }
 
@@ -279,7 +330,7 @@ void printMBR() {
 			c = 0;
 		}
 	}
-    print_p1(">>>");
+    print_p1("senko@krnl$ ");
 }
 
 void reboot(void)
@@ -310,7 +361,7 @@ __asm__("\
 ");
 }
 
-void panic(char * text, int level, int32_t data) {
+void panic(const char * text, int level, int32_t data) {
     ASMV("cli");
     //clear_screen();
     enum colors c = get_color();
@@ -344,12 +395,12 @@ void panic(char * text, int level, int32_t data) {
         printf("  EAX=%X EBX=%X ECX=%X EDX=%X\n            ESI=%X EDI=%X ESP=%X\n", eax, ebx, ecx, edx, esi, edi, esp);
         if(level != 0) {
             set_color(c);
-            printf(">>>");
+            printf("senko@krnl$ ");
         }
     }
     if(level > 1) {
         set_color(c);
-        printf(">>>");
+        //printf("senko@krnl$ ");
         ASMV("sti");
         command_routine();
     }
@@ -364,6 +415,7 @@ void panic(char * text, int level, int32_t data) {
     ASMV("sti");
 
     set_color(c);
+    wait_s(10);
     //ASMV("hlt");
 }
 /*

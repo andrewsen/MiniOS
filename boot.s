@@ -1,8 +1,3 @@
-;
-; boot.s -- Kernel start location. Also defines multiboot header.
-;           Based on Bran's kernel development tutorial file start.asm
-;
-
 MBOOT_PAGE_ALIGN    equ 1<<0    ; Load kernel and modules on a page boundary
 MBOOT_MEM_INFO      equ 1<<1    ; Provide your kernel with memory info
 MBOOT_HEADER_MAGIC  equ 0x1BADB002 ; Multiboot Magic value
@@ -12,42 +7,40 @@ MBOOT_HEADER_FLAGS  equ MBOOT_PAGE_ALIGN | MBOOT_MEM_INFO
 MBOOT_CHECKSUM      equ -(MBOOT_HEADER_MAGIC + MBOOT_HEADER_FLAGS)
 
 bits 32                         ; All instructions should be 32-bit.
+section .multiboot
+align 4
+
+
+dd  MBOOT_HEADER_MAGIC      ; GRUB will search for this value on each
+			; 4-byte boundary in the first 8KB of your kernel file.
+dd  MBOOT_HEADER_FLAGS      ; How GRUB should load your file / settings
+dd  MBOOT_CHECKSUM          ; To ensure that the above values are correct
+
+
 
 section .text
 
-global mboot                    ; Make 'mboot' accessible from C.
-extern code
-extern bss
-extern end
-
-mboot:
-    dd  MBOOT_HEADER_MAGIC      ; GRUB will search for this value on each
-				; 4-byte boundary in the first 8KB of your kernel file.
-    dd  MBOOT_HEADER_FLAGS      ; How GRUB should load your file / settings
-    dd  MBOOT_CHECKSUM          ; To ensure that the above values are correct
-    dd mboot
-	  dd  code              ; Start of kernel '.text' (code) section.
-	  dd  bss               ; End of kernel '.data' section.
-	  dd  end               ; End of kernel.
-	  dd  loader             ; Kernel entry point (initial EIP).
-
-
-global loader:function loader.end-loader ; Kernel entry point.
-extern main			                  ; This is the entry point of our C code
+global loader:function loader.end-loader ; Kernel entry
+extern main			                  ; C entry point
 extern reboot
+;extern end
+
 
 loader:
-    cli                         ; Disable interrupts.
-    mov esp, stack              ; Set up our own stack.
-    push ebx                  	; Push a pointer to the multiboot info structure.
-    mov ebp, 0                  ; Initialise the base pointer to zero so we can
-				; terminate stack traces here.
-    call main		            ; call our main() function
-	call reboot					; reboot kernel 
-    ;jmp $                       ; Enter an infinite loop, to stop the processor
-.end:                           ; from executing whatever rubbish is in the memory
-				; after our kernel!
+    ;cli
+    mov esp, stack
+    push ebx                  	; multiboot info structure ptr
+    mov ebp, 0
+
+    call main
+        call reboot
+hlt_loop:
+	hlt
+    jmp hlt_loop
+loader.end:
+
 
 section .bss
-    resb 32768
+	align 16
+    resb 65536
 stack:

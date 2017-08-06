@@ -1,0 +1,16 @@
+#ifndef C_SCREEN
+#define C_SCREEN
+
+#include <ctypes>
+
+namespace kstd {
+
+extern "C"
+{
+#include <screen.h>
+}
+
+}
+
+
+#endif

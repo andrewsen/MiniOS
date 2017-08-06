@@ -10,7 +10,7 @@ fmkrdfs() {
 	sudo dd if=/dev/zero of=initrd.img count=16484
 	sudo mkfs.ext2 -F initrd.img
 	sudo mount -o loop initrd.img ./hdd
-	sudo cp -R ./rdfs/hello.txt ./hdd/ 		#FIXME!
+	sudo cp -R ./rdfs/. ./hdd/ 		#FIXME!
 	sudo umount ./hdd
 }
 

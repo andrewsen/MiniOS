@@ -1,5 +1,5 @@
-#ifndef _PRINTF_H
-#define _PRINTF_H
+#ifndef _SCANF_H
+#define _SCANF_H
 
 int scanf(char* chars);
 

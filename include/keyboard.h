@@ -34,9 +34,16 @@
 #define LED_NUMLOCK_BIT 2
 #define LED_CAPSLOCK_BIT 4
 
+#define KEY_ESC 1
+#define KEY_UP 72
+#define KEY_DOWN 80
+#define KEY_ENTER 28
+
 void setkbdled (int ledstatus);
 void keyboard_reset (void);
 void keyboard_flush (void);
 int keyboard_getchar (void);
+unsigned char keyboard_getkey (void);
+int keycode_to_ascii (unsigned char key);
 
 #endif

@@ -1,0 +1,13 @@
+#ifndef C_STRING_H
+#define C_STRING_H
+
+//namespace kstd {
+
+extern "C"
+{
+#include <string.h>
+}
+
+//}
+
+#endif

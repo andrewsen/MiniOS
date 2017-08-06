@@ -17,6 +17,7 @@ extern "C" {
     #include "stdlib.h"
     #include "assert.h"
     #include "stdlib.h"
+    #include "timer.h"
 }
 #else
 #warning linux defined!
@@ -55,7 +56,7 @@ extern "C" {
     char *itoa(int n);
 #endif
 
-#define ELEMENTS_SIZE 256
+#define ELEMENTS_SIZE 16
 
 struct TPoint {
     uint32_t X;
@@ -245,7 +246,8 @@ public:
         //printf("TUI: Adding element %s\n", e->getName());
         e->setPos(TPoint(e->getPos().X + this->pos.X, e->getPos().Y + this->pos.Y));
 #ifndef linux
-        if(index == ELEMENTS_SIZE-1) panic("TUI Element container is full!", 2, -1);
+        if(index == ELEMENTS_SIZE-1)
+            panic("TUI Element container is full!", 2, -1);
         e->collection = (vga_cell*)(DEF_VRAM_BASE);
 #else
         e->collection = getVgaBuffer();
@@ -413,18 +415,26 @@ public:
         bcol = curr_col;
         brow = curr_row;
 #ifndef linux
+        printf("Init TUI 0\n");
+        wait_s(2);
         is_cursor_visible(false);
         for(vga_cell* i = (vga_cell*)(void*)DEF_VRAM_BASE; i < (vga_cell*)(void*)(DEF_VRAM_BASE + VRAM_SIZE*2); i++, idx++)
             bitmap[idx] = *i;
+        printf("Init TUI 1\n");
+        wait_s(2);
 #else
         vga_cell * buf = getVgaBuffer();
         for(int i = 0; i < getBufferSize(); i++, idx++)
             bitmap[idx] = buf[i];
 #endif
-
+        printf("Init TUI 2\n");
+        wait_s(2);
         clear_screen();
-        for(int i = 0; i < ELEMENTS_SIZE; i++) elements[i] = NULL;
+        for(int i = 0; i < ELEMENTS_SIZE; i++)
+            elements[i] = NULL;
         index = 0;
+        printf("Init TUI 3\n");
+        wait_s(2);
     }
 
     void clear() {
@@ -476,6 +486,8 @@ protected:
 
 public:
     TWindow() {
+        printf("Init TUI 4.5\n");
+        wait_s(2);
         strcpy(this->name, "window");
     }
 };

@@ -10,6 +10,8 @@
 #ifdef __NO_PAGING
 #include "heap.h"
 
+int rand();
+
 /*
 #define HEAP_START 0xD0000000
 #define HEAP_END   0xFFBFF000
@@ -31,14 +33,14 @@ void free (void *p);
 */
 // void * malloc(size_t size);
 
-#define kmalloc_p(sz, phys) kmalloc(sz)
+//#define kmalloc_p(sz, phys) kmalloc(sz)
 
 #define kmalloc_1(sz, phys) kmalloc(sz)
 
 #define kmalloc_2(sz, a, phys) kmalloc(sz)
  //void free(void *ptr);
 //void* kmalloc(size_t sz);
-void kfree(void* p);
+//void kfree(void* p);
 
 //uint32_t kmalloc_1(uint32_t sz, int align);
 

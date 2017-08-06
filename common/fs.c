@@ -67,14 +67,14 @@ void read_sb()
     memset(&sb, 0, sizeof(struct ext2_super_block) );
 
     if(memcpy(&sb, (void*)(location + start), count) == 0) {
-        panic("EXT2: Error read superblock\n", 2 ,-1);
+        panic("EXT2: Error read superblock\n", 2, -1);
     //exit(-1);
     }
 
 /* Проверка идентификатора файловой системы (MAGIC-номер) */
     //printf("\nEXT2: Magic: 0x%x, loc: 0x%x", sb.s_magic, location);
     if(sb.s_magic != EXT2_SUPER_MAGIC) {
-        panic("EXT2: Invalid sb magic!", 3, sb.s_magic);
+        panic("EXT2: Invalid sb magic!", 2, sb.s_magic);
     //exit(-1);
     }
 
@@ -192,12 +192,13 @@ int get_i_num(char *name)
 #ifdef DEBUG
     int i = 0;
 #endif
+    //printf("ex2 name: %s\n", name);
 
     int rec_len = 0, name_len = 0;
 
     name_len = strlen(name);
     if((!name_len) || (name_len > EXT2_NAME_LEN)) {
-        printf("Invalid filename!\n");
+        //printf("Invalid filename!\n");
         return -1;
     }
 
@@ -281,10 +282,14 @@ int read_file_blocks(struct ext2_inode *in, u8 *data_buff, u32 *num, u32 seek)
  */
 
 
-    if(seek >= (in->i_size)) return -1;
-    if(seek >= TEMP_SIZE_LIMIT) return -1;
-    if(((*num) + seek) > (in->i_size)) (*num) = (in->i_size) - seek;
-    if(((*num) + seek) > TEMP_SIZE_LIMIT) (*num) = TEMP_SIZE_LIMIT - seek;
+    if(seek >= (in->i_size))
+        return -1;
+    if(seek >= TEMP_SIZE_LIMIT)
+        return -1;
+    if(((*num) + seek) > (in->i_size))
+        (*num) = (in->i_size) - seek;
+    if(((*num) + seek) > TEMP_SIZE_LIMIT)
+        (*num) = TEMP_SIZE_LIMIT - seek;
 
     start_block = seek/BLKSIZE;
     end_block = (seek + (*num))/BLKSIZE;
@@ -311,33 +316,218 @@ int read_file_blocks(struct ext2_inode *in, u8 *data_buff, u32 *num, u32 seek)
 int ext2_get_file_size(u8 *full_path) {
     struct ext2_inode in;
     unsigned char tmp_buff[EXT2_NAME_LEN];
-    static int i = 1;
+    int i = 1;
     int n, i_num;
 
     read_sb();
     read_gd();
     get_root_dentry();
 
-    memset(tmp_buff, 0, sizeof(tmp_buff));
+    while(1)
+    {
+        memset(tmp_buff, 0, sizeof(tmp_buff));
 
-    for(n = 0 ; n < EXT2_NAME_LEN; n++, i++) {
-        tmp_buff[n] = full_path[i];
-        if((tmp_buff[n] == '/') || (tmp_buff[n] == '\0')) {
-        i++;
-        break;
+        for(n = 0 ; n < EXT2_NAME_LEN; n++, i++) {
+            tmp_buff[n] = full_path[i];
+            if((tmp_buff[n] == '/') || (tmp_buff[n] == '\0')) {
+                i++;
+                break;
+            }
         }
-    }
-    tmp_buff[n] = '\0';
+        tmp_buff[n] = '\0';
+        //printf("ext2 entry: %s\n", tmp_buff);
 
-    i_num = get_i_num(tmp_buff);
-    if(i_num < 0) {
-        printf("No such file\n");
+        i_num = get_i_num(tmp_buff);
+        if(i_num < 0) {
+            //printf("No such file\n");
+            return -1;
+            //exit(-1);
+        }
+        get_inode(i_num, &in);
+
+        int type = ((in.i_mode & 0xF000) >> 12);
+        //printf("type = %X\n", (uint)type);
+
+
+        if(type & 0x04) {
+            read_iblock(&in, 0);
+            continue;
+        }
+
+        if(type & 0x08) {
+            //printf("size == %d\n", in.i_size);
+            return in.i_size;
+        }
+
         return -1;
+    }
+
+}
+
+int ext2_file_type(u8 *full_path) {
+    struct ext2_inode in;
+    unsigned char tmp_buff[EXT2_NAME_LEN];
+    int i = 1;
+    int n, i_num;
+    int len = strlen(full_path);
+
+    read_sb();
+    read_gd();
+    get_root_dentry();
+
+    while(i <= len)
+    {
+        memset(tmp_buff, 0, sizeof(tmp_buff));
+
+        for(n = 0 ; n < EXT2_NAME_LEN; n++, i++) {
+            tmp_buff[n] = full_path[i];
+            if((tmp_buff[n] == '/') || (tmp_buff[n] == '\0')) {
+                i++;
+                break;
+            }
+        }
+        tmp_buff[n] = '\0';
+        //printf("ext2 entry: %s\n", tmp_buff);
+
+        i_num = get_i_num(tmp_buff);
+        if(i_num < 0) {
+            printf("No such file\n");
+            return TYPE_UNKNOWN;
+            //exit(-1);
+        }
+        get_inode(i_num, &in);
+
+        int type = ((in.i_mode & 0xF000) >> 12);
+        //printf("type = %X\n", (uint)type);
+
+
+        if(type & 0x04) {
+            if(i >= len)
+                return TYPE_DIR;
+            read_iblock(&in, 0);
+            continue;
+        }
+
+        if(type & 0x08) {
+            return TYPE_FILE;
+        }
+
+        return TYPE_UNKNOWN;
+    }
+
+}
+
+int ext2_file_exists(u8 *path)
+{
+    return ext2_file_type(path) != 0;
+}
+
+struct ext2_inode* ext2_open_file(u8 *full_path)
+{
+
+/*
+ * Параметры функции:
+ * full_path - абсолютное путевое имя файла
+ * data_buff - буфер для данных
+ * num - сколько байт считывать из файла
+ * seek - смещение в файле
+ */
+
+    struct ext2_inode in;
+    unsigned char tmp_buff[EXT2_NAME_LEN];
+    int i = 1;
+    int n, i_num, type;
+
+
+    if(full_path[0] != '/') {
+        panic("EXT2: slash", 3, -1);
         //exit(-1);
     }
-    get_inode(i_num, &in);
 
-    return in.i_size;
+    major = 0;
+    minor = 0;
+
+    //set_perm();
+
+    //if(ata_init() < 0) {
+    //perror("ata_init");
+    //exit(-1);
+    //}
+
+/*
+ * Прочитать суперблок, таблицу дескрипторов групп,
+ * и получить содержимое корневого каталога
+ */
+    read_sb();
+    read_gd();
+    get_root_dentry();
+
+    while(1) {
+
+        memset(tmp_buff, 0, sizeof(tmp_buff));
+
+        for(n = 0 ; n < EXT2_NAME_LEN; n++, i++) {
+            tmp_buff[n] = full_path[i];
+            if((tmp_buff[n] == '/') || (tmp_buff[n] == '\0')) {
+                i++;
+                break;
+            }
+        }
+        tmp_buff[n] = '\0';
+
+        i_num = get_i_num(tmp_buff);
+        if(i_num < 0) {
+            printf("No such file\n");
+            return NULL;
+            //exit(-1);
+        }
+        get_inode(i_num, &in);
+    #ifdef DEBUG
+        printf("Inode number - %u\n", i_num);
+        printf("File name - %s\n", tmp_buff);
+        printf("File size - %u\n",in.i_size);
+    #endif
+
+        type = ((in.i_mode & 0xF000) >> 12);
+        //printf("type = %X\n", (uint)type);
+
+
+        if(type & 0x04) {
+            read_iblock(&in, 0);
+            continue;
+        }
+
+        if(type & 0x08) {
+            struct ext2_inode *result = kmalloc(sizeof(struct ext2_inode));
+            memcpy(result, &in, sizeof(struct ext2_inode));
+            return result;
+        }
+    }
+
+    //release_perm();
+    return NULL;
+}
+
+int ext2_read(struct ext2_inode *in, u8 *data_buff, u32 *num, u32 seek)
+{
+    uint type = ((in->i_mode & 0xF000) >> 12);
+
+    if(type & 0x04) {
+        return TYPE_DIR;
+    }
+
+    if(type & 0x08) {
+        if(read_file_blocks(in, data_buff, num, seek) < 0)
+            return -1;
+        return 1;
+    }
+
+    return 0;
+}
+
+void ext2_close(struct ext2_inode *in)
+{
+    kfree(in);
 }
 
 int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *num, u32 seek)
@@ -353,7 +543,7 @@ int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *
 
     struct ext2_inode in;
     unsigned char tmp_buff[EXT2_NAME_LEN];
-    static int i = 1;
+    int i = 1;
     int n, i_num, type;
 
 
@@ -387,13 +577,12 @@ int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *
         for(n = 0 ; n < EXT2_NAME_LEN; n++, i++) {
             tmp_buff[n] = full_path[i];
             if((tmp_buff[n] == '/') || (tmp_buff[n] == '\0')) {
-            i++;
-            break;
+                i++;
+                break;
             }
         }
         tmp_buff[n] = '\0';
 
-        printf("tmp_buf = %s\n", tmp_buff);
         i_num = get_i_num(tmp_buff);
         if(i_num < 0) {
             printf("No such file\n");
@@ -401,7 +590,6 @@ int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *
             //exit(-1);
         }
         get_inode(i_num, &in);
-
     #ifdef DEBUG
         printf("Inode number - %u\n", i_num);
         printf("File name - %s\n", tmp_buff);
@@ -409,6 +597,8 @@ int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *
     #endif
 
         type = ((in.i_mode & 0xF000) >> 12);
+        //printf("type = %X\n", (uint)type);
+
 
         if(type & 0x04) {
             read_iblock(&in, 0);

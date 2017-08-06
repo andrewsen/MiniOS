@@ -1,0 +1,9 @@
+#ifndef C_TYPES
+#define C_TYPES
+
+extern "C"
+{
+    #include <types.h>
+}
+
+#endif

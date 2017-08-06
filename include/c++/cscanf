@@ -1,0 +1,13 @@
+#ifndef C_SCANF
+#define C_SCANF
+
+namespace kstd {
+
+extern "C"
+{
+    #include <scanf.h>
+}
+
+}
+
+#endif

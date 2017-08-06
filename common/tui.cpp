@@ -10,9 +10,14 @@ void b_click(TElement * element);
 
 extern "C" void redraw() {
     TScreen * screen = TScreen::getScreen();
+    //wait_s(5);
     screen->initialize();
 
+    printf("Init TUI 4\n");
+    wait_s(2);
     TWindow window;
+    printf("Init TUI 5\n");
+    wait_s(2);
 
     window.setName("mainWindow");
     window.setHeigh(MAX_ROW);

@@ -5,15 +5,105 @@
 
 #include "heap.h"
 #include "paging.h"
+#include "string.h"
 
 // end is defined in the linker script.
 extern u32 end;
 u32 placement_address = (u32)&end;
 extern page_directory_t *kernel_directory;
 heap_t *kheap=0;
+vpage_t *table_addr = 0;
+vpage_t *table_end = 0;
+
+void init_memory_manager(uint heap_start, uint table_size)
+{
+    memset((void*)heap_start, 0, table_size*sizeof(vpage_t));
+    table_addr = heap_start;
+    table_addr->addr = heap_start + table_size*sizeof(vpage_t);
+    table_addr->size = 0;
+    table_end = heap_start + table_size*sizeof(vpage_t);
+}
+
+uint mm_alloc(uint size)
+{
+    vpage_t* pg = (vpage_t*)table_addr;
+    while(pg != table_end)
+    {
+        //printf("Looking for free page at %x\n", (uint)pg);
+        vpage_t* next = pg+1;
+        if(!next->addr)
+        {
+             next->addr = pg->addr + pg->size;
+             next->size = size;
+             return next->addr;
+        }
+        else if(next->addr >= (pg->addr + pg->size + size))
+        {
+            vpage_t* new_page = next;
+            shift_pages(next, 1);
+            new_page->addr = pg->addr+pg->size;
+            new_page->size = size;
+            //next->addr = pg->addr + pg->size;
+            //next->size = size;
+            //return next->addr;
+            return new_page->addr;
+        }
+        ++pg;
+    }
+    panic("Not enough memory! Data: alloc request", 0, size);
+}
+
+void mm_free(uint mem)
+{
+    vpage_t* pg = (vpage_t*)table_addr;
+    while(pg != table_end)
+    {
+        if(pg->addr == mem)
+        {
+            shift_pages(pg, 0);
+            return;
+        }
+        ++pg;
+    }
+    panic("Double free or memory corruption", 1, mem);
+}
+
+void shift_pages(vpage_t *base, int forward)
+{
+    if(forward)
+    {
+        vpage_t* pg = base+1;
+        vpage_t old = *base;
+        while(old.addr)
+        {
+            vpage_t temp = *pg;
+            pg->addr = old.addr;
+            pg->size = old.size;
+            old = temp;
+            ++pg;
+        }
+    }
+    else
+    {
+        vpage_t* cur = base;
+        vpage_t* next = cur+1;
+        while(cur->addr)
+        {
+            cur->addr = next->addr;
+            cur->size = next->size;
+            ++cur;
+            ++next;
+        }
+    }
+}
 
 u32 kmalloc_int(u32 sz, int align, u32 *phys)
 {
+    if(table_addr)
+    {
+        return (uint)mm_alloc(sz);
+    }
+
     if (kheap != 0)
     {
         void *addr = alloc(sz, (u8)align, kheap);
@@ -44,6 +134,13 @@ u32 kmalloc_int(u32 sz, int align, u32 *phys)
 
 void kfree(void *p)
 {
+    if(p == 0)
+        return;
+    if(table_addr)
+    {
+        mm_free((uint)p);
+        return;
+    }
     free(p, kheap);
 }
 
@@ -67,9 +164,15 @@ u32 kmalloc(u32 sz)
     return kmalloc_int(sz, 0, 0);
 }
 
+u32 calloc(u32 count, u32 size)
+{
+    u32 mem = kmalloc(count * size);
+    memset((void*)mem, 0, count * size);
+    return mem;
+}
+
 static void expand(u32 new_size, heap_t *heap)
 {
-    // Sanity check.
     ASSERT(new_size > heap->end_address - heap->start_address);
 
     // Get the nearest following page boundary.

@@ -1,0 +1,20 @@
+#ifndef NEW_HPP
+#define NEW_HPP
+
+#include <cheap>
+
+using namespace kstd;
+
+void *operator new(size_t size);
+void *operator new(size_t size, void *p);
+void *operator new[](size_t size);
+void operator delete(void *p);
+void operator delete[](void *p);
+void operator delete(void*, unsigned int);
+//void operator delete[](void *p, size_t size);
+
+#define knew(T) (T*)(kmalloc(sizeof(T)))
+#define knew(T, c) (T*)(kmalloc(sizeof(T)*(c)))
+#define kdelete(x) kfree(x)
+
+#endif // NEW_HPP

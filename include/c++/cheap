@@ -1,0 +1,14 @@
+#ifndef C_HEAP
+#define C_HEAP
+
+namespace kstd {
+
+extern "C"
+{
+    #include <heap.h>
+}
+
+}
+
+
+#endif // KHEAP_H

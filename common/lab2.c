@@ -7,6 +7,16 @@ const int C5 = VARIANT % 5;
 const int C7 = VARIANT % 7;
 const int C11 = VARIANT % 11;
 
+double get_double_f()
+{
+    return 0.5;
+}
+
+float get_float_f()
+{
+    return 0.5f;
+}
+
 void fill(matrix_t* matr)
 {
     printf("Enter number of rows and columns:\n");

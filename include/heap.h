@@ -41,6 +41,12 @@ typedef struct
    u8 readonly;       // Should extra pages requested by us be mapped as read-only?
 } heap_t;
 
+typedef struct
+{
+    uint addr;
+    uint  size;
+} vpage_t;
+
 /**
   Create a new heap.
 **/
@@ -53,6 +59,7 @@ void *alloc(u32 size, u8 page_align, heap_t *heap);
 /**
   Releases a block allocated with 'alloc'.
 **/
+void kfree(void *p);
 void free(void *p, heap_t *heap);
 
 /**
@@ -88,5 +95,9 @@ u32 kmalloc_ap(u32 sz, u32 *phys);
    General allocation function.
 **/
 u32 kmalloc(u32 sz);
+
+u32 calloc(u32 count, u32 size);
+
+void init_memory_manager(uint heap_start, uint table_size);
 
 #endif // KHEAP_H

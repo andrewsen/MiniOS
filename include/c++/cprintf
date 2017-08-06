@@ -1,0 +1,13 @@
+#ifndef C_PRINTF
+#define C_PRINTF
+
+namespace kstd {
+
+extern "C"
+{
+    #include <printf.h>
+}
+
+}
+
+#endif

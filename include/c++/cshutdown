@@ -1,0 +1,13 @@
+#ifndef C_SHUTDOWN
+#define C_SHUTDOWN
+
+namespace kstd {
+
+extern "C"
+{
+#include <shutdown.h>
+}
+
+}
+
+#endif

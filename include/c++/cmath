@@ -1,0 +1,13 @@
+#ifndef C_MATH
+#define C_MATH
+
+namespace kstd {
+
+extern "C"
+{
+    #include <math.h>
+}
+
+}
+
+#endif // MATH_H

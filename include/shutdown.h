@@ -5,4 +5,6 @@ void acpiPowerOff(void);
 
 static inline void shutdown() {acpiPowerOff();}
 
+void reboot();
+
 #endif

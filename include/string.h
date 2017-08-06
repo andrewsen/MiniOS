@@ -31,13 +31,23 @@
 #define _CORE_STRING_H
 
 #include "types.h"
+#include "stdlib.h"
 
 char** split(char * string, int *q, char delim);
+char** strspl(char * string, int *q, char delim);
 void *memmem(const void *buf1, size_t size1, const void *buf2, size_t size2);
 char *strcpy(char* str1, const char*str2);
 
 char *strcat(char *dest, const char *src);
 char *itoa(int n);
+char *lltoa(int64_t val);
+int isdigit(char ch);
+double atof(const char *s);
+int atoi(const char *val);
+int hatoi(const char *val);
+char *ftoa(float f);
+char *dtoa(double d);
+long long int atoll(const char *val);
 
 #ifdef __cplusplus
 int* memcmp(const void *buf1, const void *buf2, size_t count);

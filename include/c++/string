@@ -1,0 +1,215 @@
+#ifndef STRING_HPP
+#define STRING_HPP
+
+#include <cstring>
+#include <cheap>
+
+#include <iostream>
+
+namespace kstd {
+
+class string
+{
+    char* m_data = nullptr;
+    uint m_capacity = 0;
+    uint m_size = 0;
+public:
+    string()
+    {
+
+    }
+
+    string(const char *raw)
+    {
+        m_size = m_capacity = strlen(raw);
+        m_capacity++;
+        m_data = (char*)kmalloc(m_capacity);
+        strcpy(m_data, raw);
+    }
+
+    string(const string &other)
+    {
+        m_size = other.m_size;
+        m_capacity = other.m_capacity;
+        m_data = (char*)kmalloc(m_capacity);
+        strcpy(m_data, other.m_data);
+    }
+
+    ~string()
+    {
+        //cout << "~string()\n";
+        kfree(m_data);
+    }
+
+    string& operator=(const string &other)
+    {
+        //cout << "  =" << (int)m_data << endl;
+        kfree(m_data);
+        //cout << "  ~=\n";
+        //cout << "  f=\n";
+        m_size = other.m_size;
+        m_capacity = other.m_capacity;
+        m_data = (char*)kmalloc(m_capacity);
+        strcpy(m_data, other.m_data);
+        return *this;
+    }
+
+    string& operator=(const char *other)
+    {
+        kfree(m_data);
+        m_size = strlen(other);
+        m_capacity = m_size+1;
+        m_data = (char*)kmalloc(m_capacity);
+        strcpy(m_data, other);
+        return *this;
+    }
+
+    string& operator+=(const string& str)
+    {
+        char* new_str = (char*)kmalloc(m_capacity + str.m_size);
+        strcpy(new_str, m_data);
+        strcpy(new_str+m_size, str.m_data);
+        kfree(m_data);
+        m_data = new_str;
+        m_capacity += str.m_size;
+        m_size += str.m_size;
+        return *this;
+    }
+
+    string& operator+=(const char* str)
+    {
+        uint len = strlen(str);
+        char* new_str = (char*)kmalloc(m_capacity + len);
+        strcpy(new_str, m_data);
+        strcpy(new_str+m_size, str);
+        kfree(m_data);
+        m_data = new_str;
+        m_capacity += len;
+        m_size += len;
+        return *this;
+    }
+
+    string& operator+=(char ch)
+    {
+        char* new_str = (char*)kmalloc(++m_capacity);
+        strcpy(new_str, m_data);
+        new_str[m_size++] = ch;
+        new_str[m_size] = '\0';
+        kfree(m_data);
+        m_data = new_str;
+        return *this;
+    }
+
+    char& operator[](uint idx)
+    {
+        return m_data[idx];
+    }
+
+    friend string operator+(const string &s1, const string &s2)
+    {
+        string res = s1;
+        res += s2;
+        return res;
+    }
+
+    friend string operator+(const string &s1, const char *s2)
+    {
+        string res = s1;
+        res += s2;
+        return res;
+    }
+
+    friend string operator+(const char *s1, const string &s2)
+    {
+        string res = s1;
+        res += s2;
+        return res;
+    }
+
+    friend string operator+(const string &s, char ch)
+    {
+        string res = s;
+        res += ch;
+        return res;
+    }
+
+    friend string operator+(char ch, const string &s)
+    {
+        string res = "";
+        res += ch;
+        res += s;
+        return res;
+    }
+
+    friend bool operator==(const string &s1, const string &s2)
+    {
+        return !strcmp(s1.m_data, s2.m_data);
+    }
+
+    friend bool operator!=(const string &s1, const string &s2)
+    {
+        return strcmp(s1.m_data, s2.m_data);
+    }
+
+    friend ostream& operator<<(ostream &cout, const string str)
+    {
+        cout << str.c_str();
+        return cout;
+    }
+
+    friend istream& operator>>(istream &cin, string &str)
+    {
+        char buf[256];
+        cin >> buf;
+        str = buf;
+        return cin;
+    }
+
+    const char* c_str() const // DANGER! MEMORY LEAKS
+    {
+        char* new_data = (char*)kmalloc(m_capacity);
+        strcpy(new_data, m_data);
+        return new_data;
+    }
+
+    int size() const
+    {
+        return m_size;
+    }
+
+    bool empty() const
+    {
+        return m_data == 0;
+    }
+
+    bool clear()
+    {
+        kfree(m_data);
+        m_size = m_capacity = 0;
+        m_data = nullptr;
+    }
+
+    char& front()
+    {
+        return m_data[0];
+    }
+
+    char& back()
+    {
+        return m_data[m_size-1];
+    }
+
+    char* begin()
+    {
+        return m_data;
+    }
+
+    char* end()
+    {
+        return &m_data[m_size];
+    }
+};
+
+}
+
+#endif // STRING_HPP

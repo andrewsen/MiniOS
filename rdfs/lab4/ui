@@ -1,0 +1,292 @@
+{
+	"mode": 
+	{
+		"H": "600",
+		"W": "800"
+	},
+	"title": "Lab 4",
+	"window":
+	[
+		{
+			"type": "Grid",
+			"width": "300",
+			"height": "600",
+			"color": "#FFFFFF",
+			"children":
+			[
+				{
+					"type": "Panel",
+					"width": "800",
+					"height": "20",
+					"color": "#FFFFFF"
+				},			
+				{
+					"type": "Label",
+					"text": "Lab 4: x^3-2x+7=0",
+					"width": "160",
+					"position": "25 5"
+				},
+				{
+					"type": "Label",
+					"text": "Enter a:",
+					"width": "80",
+					"position": "5 25"
+				},
+				{
+					"type": "LineEdit",
+					"name": "aEdit",
+					"width": "80",
+					"position": "90 25"
+				},
+				{
+					"type": "Label",
+					"text": "Enter b:",
+					"width": "80",
+					"position": "5 60"
+				},
+				{
+					"type": "LineEdit",
+					"name": "bEdit",
+					"width": "80",
+					"position": "90 60"
+				},
+				{
+					"type": "Label",
+					"text": "Enter e:",
+					"width": "80",
+					"position": "5 115"
+				},
+				{
+					"type": "LineEdit",
+					"name": "eEdit",
+					"width": "80",
+					"position": "90 115"
+				},
+				{
+					"type": "Button",
+					"name": "calcButton",
+					"text": "Calc",
+					"width": "80",
+					"position": "40 160",
+					"onClick": "calcButtonClick"
+				},
+				{
+					"type": "Label",
+					"text": "Result is:",
+					"width": "120",
+					"position": "5 205"
+				},
+				{
+					"type": "Label",
+					"name": "outLabel",
+					"width": "120",
+					"position": "5 230"
+				}
+			]
+		},
+		{
+			"type": "Grid",
+			"position": "300 0",
+			"width": "500",
+			"height": "600",
+			"children":
+			[
+				{
+					"type": "Panel",
+					"position": "300 0",
+					"width": "500",
+					"height": "20",
+					"color": "#FFFFFF"
+				},			
+				{
+					"type": "Label",
+					"text": "Lab 5: Jacobi",
+					"width": "160",
+					"position": "325 5"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed11",
+					"width": "50",
+					"position": "310 30"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed12",
+					"width": "50",
+					"position": "375 30"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed13",
+					"width": "50",
+					"position": "440 30"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed21",
+					"width": "50",
+					"position": "310 65"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed22",
+					"width": "50",
+					"position": "375 65"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed23",
+					"width": "50",
+					"position": "440 65"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed31",
+					"width": "50",
+					"position": "310 100"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed32",
+					"width": "50",
+					"position": "375 100"
+				},
+				{
+					"type": "LineEdit",
+					"name": "ed33",
+					"width": "50",
+					"position": "440 100"
+				},
+				{
+					"type": "LineEdit",
+					"name": "x1",
+					"width": "50",
+					"position": "530 30"
+				},
+				{
+					"type": "LineEdit",
+					"name": "x2",
+					"width": "50",
+					"position": "530 63"
+				},
+				{
+					"type": "LineEdit",
+					"name": "x3",
+					"width": "50",
+					"position": "530 100"
+				},				
+				{
+					"type": "Label",
+					"text": "=",
+					"width": "15",
+					"position": "506 37"
+				},				
+				{
+					"type": "Label",
+					"text": "=",
+					"width": "15",
+					"position": "506 77"
+				},				
+				{
+					"type": "Label",
+					"text": "=",
+					"width": "15",
+					"position": "506 107"
+				},				
+				{
+					"type": "Label",
+					"name": "out1",
+					"width": "80",
+					"position": "596 37"
+				},				
+				{
+					"type": "Label",
+					"name": "out2",
+					"width": "80",
+					"position": "596 75"
+				},				
+				{
+					"type": "Label",
+					"name": "out3",
+					"width": "80",
+					"position": "596 107"
+				},
+				{
+					"type": "Button",
+					"name": "calc5Button",
+					"text": "Calc",
+					"width": "80",
+					"position": "350 160",
+					"onClick": "calc5ButtonClick"
+				},
+				{
+					"type": "Button",
+					"name": "rebootButton",
+					"text": "Reboot",
+					"width": "80",
+					"position": "700 570",
+					"onClick": "rebootButtonClick"
+				},
+				{
+					"type": "Button",
+					"name": "shutdownButton",
+					"text": "Shutdown",
+					"width": "80",
+					"position": "600 570",
+					"onClick": "shutdownButtonClick"
+				}
+			]
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "Grand Finale",
+			"width": "300",
+			"position": "5 460"
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "Fourth and fifth labs for AMO",
+			"width": "300",
+			"position": "5 480"
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "Kernel, VM, UI and many more",
+			"width": "300",
+			"position": "5 500"
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "Was created by myself",
+			"width": "300",
+			"position": "5 520"
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "It was cool",
+			"width": "300",
+			"position": "5 540"
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "IO-53. Andrew Senko",
+			"width": "300",
+			"position": "5 560"
+		},
+		{
+			"type": "Label",
+			"textColor": "#00AA00",
+			"text": "Welcome to the club",
+			"width": "300",
+			"position": "5 580"
+		}
+	]
+}
+

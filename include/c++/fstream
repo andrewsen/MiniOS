@@ -1,0 +1,186 @@
+#ifndef FSTREAM_HPP
+#define FSTREAM_HPP
+
+extern "C"
+{
+#include "fs.h"
+}
+#include <cheap>
+#include <cstring>
+
+namespace kstd {
+
+class ifstream
+{
+    char file[EXT2_NAME_LEN];
+    uint m_pos;
+    uint m_size;
+    bool is_eof = false;
+    ext2_inode *node;
+public:
+    ifstream(const char *f)
+    {
+        strcpy(file, f);
+        //cout << "file: " << file << endl;
+        node = ext2_open_file((byte*)file);
+        m_size = ext2_get_file_size((byte*)file);
+        m_pos = 0;
+    }
+
+    bool operator!()
+    {
+        return !ext2_file_exists((byte*)file);
+    }
+
+    bool eof()
+    {
+        return is_eof;
+    }
+
+    void read(char* buf, uint count)
+    {
+        if(m_pos + count > m_size)
+            is_eof = true;
+        ext2_read(node, (byte*)buf, &count, m_pos);
+        //ext2_read_file(0, 0, file, buf, &count, pos);
+        m_pos += count;
+    }
+
+    void close()
+    {
+        ext2_close(node);
+    }
+
+    uint tellg()
+    {
+        return m_pos;
+    }
+
+    void seekg(uint p)
+    {
+        m_pos = p;
+        if(m_pos > m_size)
+            is_eof = true;
+    }
+
+    int get()
+    {
+        int ch = 0;
+        uint size = 1;
+        ext2_read(node, (byte*)&ch, &size, m_pos);
+        ++m_pos;
+        if(m_pos > m_size)
+            is_eof = true;
+        //printf("pos: %d, size %d, char %c\n", m_pos, m_size, (char)ch);
+        return ch;
+    }
+
+    ifstream& read(char* buf, uint count, char delim)
+    {
+        for(int i = 0; i < count; ++i)
+        {
+            uint size = 1;
+            int ch = 0;
+            ext2_read(node, (byte*)&ch, &size, m_pos);
+            ++m_pos;
+            //cout << (char)ch << ": " << m_pos << endl;
+            buf[i] = ch;
+            if(ch == delim)
+            {
+                //cout << "broken(" << (int)delim << ")\n";
+                break;
+            }
+        }
+        if(m_pos + count > m_size)
+            is_eof = true;
+        return *this;
+    }
+
+    ifstream& get(char* buf, uint count, char delim)
+    {
+        for(int i = 0; i < count; ++i)
+        {
+            uint size = 1;
+            int ch = 0;
+            ext2_read(node, (byte*)&ch, &size, m_pos);
+            ++m_pos;
+            //cout << (char)ch << ": " << m_pos << endl;
+            if(ch == delim)
+            {
+                --m_pos;
+                //cout << "broken(" << (int)delim << ")\n";
+                break;
+            }
+            buf[i] = ch;
+        }
+        if(m_pos + count > m_size)
+            is_eof = true;
+        return *this;
+    }
+
+    ifstream& get(char* buf, uint count)
+    {
+        for(int i = 0; i < count; ++i)
+        {
+            uint size = 1;
+            int ch = 0;
+            ext2_read(node, (byte*)&ch, &size, m_pos);
+            //cout << (char)ch << ": " << m_pos << endl;
+            buf[i] = ch;
+            ++m_pos;
+        }
+        if(m_pos + count > m_size)
+            is_eof = true;
+        return *this;
+    }
+
+    ifstream& ignore()
+    {
+        get();
+        return *this;
+    }
+
+    ifstream& ignore(uint count)
+    {
+        while(count--)
+            get();
+        return *this;
+    }
+
+    uint size() const
+    {
+        return m_size;
+    }
+
+    /*friend ifstream& operator>>(ifstream &stream, char *str)
+    {
+        scanf(str);
+        return stream;
+    }
+
+    friend ifstream& operator>>(ifstream &stream, char &ch)
+    {
+        scanf(&ch);
+        return stream;
+    }
+
+    friend ifstream& operator>>(ifstream &stream, int &i)
+    {
+        char buf[15];
+        scanf(buf);
+        i = atoi(buf);
+        return stream;
+    }
+
+    friend ifstream& operator>>(ifstream &stream, long long int &lli)
+    {
+        char buf[25];
+        scanf(buf);
+        lli = atoll(buf);
+        return stream;
+    }*/
+};
+
+}
+
+#endif // FSTREAM_HPP

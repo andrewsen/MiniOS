@@ -1,0 +1,13 @@
+#ifndef C_STDLIB
+#define C_STDLIB
+
+namespace kstd {
+
+extern "C"
+{
+#include <stdlib.h>
+}
+
+}
+
+#endif

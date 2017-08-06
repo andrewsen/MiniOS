@@ -1,0 +1,104 @@
+.module a
+
+.import "stdlib.sem"
+
+.define("locale", "English")
+.define("source", "../bin/a.mc")
+
+.globals
+	0 : i32 -> private TestProp_$pfld
+	1 : string -> private RWProp1_$pfld
+.end-globals
+.ro-prop(private, "ROProp1", i32[][])
+.rw-prop(public, "TestProp", i32)
+.rw-prop(public, "RWProp1", string)
+
+public void __init__() oninit hidden
+{
+	ret
+}
+
+public i32[][] ROProp1$getter()
+{
+	ld_2
+	newarr i32[] 
+	ret
+}
+
+public i32 TestProp$getter()
+{
+	ldfld_0
+	ret
+}
+
+public void TestProp$setter(i32)
+{
+	ldarg_0
+	stfld_0
+	ret
+}
+
+public string RWProp1$getter()
+{
+	ldfld_1
+	ret
+}
+
+public void RWProp1$setter(string)
+{
+	ldfld_1
+	ld_null
+	eq
+	ldarg_0
+	ld_null
+	eq
+	and
+	call ROProp1$getter() 
+	ld_null
+	neq
+	and
+	ld_i32 3 
+	ld_i32 4 
+	eq
+	and
+	jz _if_else_label_0 
+	ld_str "allnull" 
+	stfld_1
+	jmp _if_out_label_1 
+_if_else_label_0:
+	ld_str "nonnull" 
+	stfld_1
+_if_out_label_1:
+	ret
+}
+
+private i32 calc()
+{
+	call TestProp$getter() 
+	inc
+	call TestProp$setter(i32) 
+	call RWProp1$getter() 
+	call [stdlib.sem] print(string) 
+	ld_null
+	call RWProp1$setter(string) 
+	ld_0
+	ret
+}
+
+public void main()
+	.locals
+	0 : i32[]
+	.end-locals
+{
+	ld_i32 42 
+	newarr i32 
+	stloc_0
+	ldloc_0
+	ld_2
+	ld_aref
+	dup
+	ld_byref
+	inc
+	st_byref
+	ret
+}

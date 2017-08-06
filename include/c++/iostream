@@ -1,0 +1,162 @@
+#ifndef IOSTREAM_HPP
+#define IOSTREAM_HPP
+
+#include <cscreen>
+#include <cprintf>
+#include <cscanf>
+#include <cstring>
+#include <ckeyboard>
+
+namespace kstd {
+
+class ostream
+{
+public:
+    typedef ostream& (*iomainp)(ostream&);
+
+    friend ostream& operator<<(ostream &stream, const char *str)
+    {
+        write(str);
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, char ch)
+    {
+        putchar(ch);
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, int i)
+    {
+        write(itoa(i));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, unsigned int i)
+    {
+        write(itoa(i));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, long unsigned int i)
+    {
+        write(lltoa(i));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, long long int lli)
+    {
+        write(lltoa(lli));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, unsigned long long int lli)
+    {
+        write(lltoa(lli));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, float f)
+    {
+        write(ftoa(f));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, double d)
+    {
+        write(dtoa(d));
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, bool b)
+    {
+        write(b ? "true" : "false");
+        return stream;
+    }
+
+    friend ostream& operator<<(ostream &stream, iomainp manip)
+    {
+        manip(stream);
+        return stream;
+    }
+};
+
+class istream
+{
+public:
+    friend istream& operator>>(istream &stream, char *str)
+    {
+        scanf(str);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, char &ch)
+    {
+        scanf(&ch);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, int &i)
+    {
+        char buf[15];
+        scanf(buf);
+        i = atoi(buf);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, unsigned int &i)
+    {
+        char buf[15];
+        scanf(buf);
+        i = atoi(buf);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, long unsigned int &i)
+    {
+        char buf[15];
+        scanf(buf);
+        i = atoi(buf);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, long long int &lli)
+    {
+        char buf[25];
+        scanf(buf);
+        lli = atoll(buf);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, double &d)
+    {
+        char buf[25];
+        scanf(buf);
+        d = atof(buf);
+        return stream;
+    }
+
+    friend istream& operator>>(istream &stream, float &f)
+    {
+        char buf[25];
+        scanf(buf);
+        f = (float)atof(buf);
+        return stream;
+    }
+
+    int get()
+    {
+        return keyboard_getchar();
+    }
+};
+
+extern istream cin;
+extern ostream cout;
+extern ostream clog;
+extern ostream cerr;
+
+ostream& endl(ostream &str);
+
+}
+
+#endif // IOSTREAM_HPP

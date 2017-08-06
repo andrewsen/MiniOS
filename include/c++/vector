@@ -1,0 +1,181 @@
+#ifndef VECTOR_H
+#define VECTOR_H
+
+#include <string>
+#include <cheap>
+#include <ctypes>
+
+extern "C"
+{
+    extern uint get_capacity(uint cap);
+}
+
+namespace kstd {
+
+
+template<typename T> class vector
+{
+protected:
+    T* m_array = nullptr;
+    uint m_size = 0;
+    uint m_capacity = 0;
+public:
+    string name;
+    typedef T* iterator;
+
+    vector()
+    {
+        name = "";
+        //kstd::cout << name << "(" << m_size << ", " << m_capacity << ")\n";
+    }
+
+    explicit vector(uint count)
+    {
+        reserve(count);
+    }
+
+    vector(const vector<T> &other)
+    {
+        m_capacity = other.m_capacity;
+        m_size = other.m_size;
+        m_array = (T*)calloc(m_capacity, sizeof(T));
+
+        for(int i = 0; i < m_size; ++i)
+        {
+            m_array[i] = other.m_array[i];
+        }
+    }
+
+    ~vector()
+    {
+        for(int i = 0; i < m_size; ++i)
+        {
+            m_array[i].~T();
+        }
+        kfree(m_array);
+    }
+
+    vector<T>& operator=(const vector<T> &other)
+    {
+        if(m_array != nullptr)
+            kfree(m_array); // no ~T() is called
+
+        m_capacity = other.m_capacity;
+        m_size = other.m_size;
+        m_array = (T*)calloc(m_capacity, sizeof(T));
+
+        for(int i = 0; i < other.m_size; ++i)
+        {
+            m_array[i] = other.m_array[i];
+        }
+
+        return *this;
+    }
+
+    void remove(const T &value)
+    {
+        for(int i = 0; i < m_size; ++i)
+        {
+            if(m_array[i] == value)
+            {
+                for(int j = i; j < m_size-1; ++j)
+                {
+                    m_array[j] = m_array[j+1];
+                }
+                --m_size;
+            }
+        }
+    }
+
+    void reserve(uint count)
+    {
+        //kstd::cout << "moving(" << m_size << ", " << m_capacity << ")\n";
+        //kstd::cout <<  name << " m(" << m_size << ", " << m_capacity << ")\n";
+        if(count < m_capacity)
+            return;
+
+        m_capacity = get_capacity(count);
+        T* new_arr = (T*)calloc(m_capacity, sizeof(T));
+
+        for(int i = 0; i < m_size; ++i)
+        {
+            new_arr[i] = m_array[i];
+            m_array[i].~T();
+        }
+        kfree((void*)m_array);
+        m_array = new_arr;
+    }
+
+    void push_back(const T &val)
+    {
+        //kstd::cout <<  name << " push(" << m_size << ", " << m_capacity << ")\n";
+        if(m_size >= m_capacity)
+        {
+            reserve(m_capacity);
+        }
+        //kstd::cout << "end:push_back()\n";
+        m_array[m_size++] = val;
+    }
+
+    void pop_back()
+    {
+        m_array[--m_size].~T();
+    }
+
+    T& operator[](uint idx) const
+    {
+        return m_array[idx];
+    }
+
+    T& operator[](uint idx)
+    {
+        return m_array[idx];
+    }
+
+    T& front() const
+    {
+        return m_array[0];
+    }
+
+    T& back() const
+    {
+        return m_array[m_size-1];
+    }
+
+    iterator begin() const
+    {
+        return m_array;
+    }
+
+    iterator end() const
+    {
+        return &m_array[m_size];
+    }
+
+    uint size() const
+    {
+        return m_size;
+    }
+
+    uint capacity() const
+    {
+        return m_capacity;
+    }
+
+    bool empty() const
+    {
+        return m_size == 0;
+    }
+
+    void clear()
+    {
+        for(int i = 0; i < m_size; ++i)
+            m_array[i].~T();
+        kfree(m_array);
+        m_size = m_capacity = 0;
+        m_array = nullptr;
+    }
+};
+
+}
+#endif // VECTOR_H

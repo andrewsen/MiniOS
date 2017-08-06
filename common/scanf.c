@@ -9,13 +9,19 @@ int scanf(char * chars) {
 	int i = 0;
 	while((ch = keyboard_getchar()) != '\n') {
 		
-		if(ch == 0x08) {
-			--i;
-			printf("%c", ch);
+
+        if(ch == 0x08)
+        {
+            if(i > 0)
+            {
+                --i;
+                printf("%c", ch);
+            }
 		}
-		else {
+        else
+        {
 			chars[i] = ch;
-			printf("%c", ch);
+            printf("%c", ch);
 			++i;
 		}
 	}

@@ -15,7 +15,7 @@ void bad_assertion(char *file, int line, char *what);
 #define ASSERT(x) (assert(x))
 #define PANIC(x)       (printf("%s %s %s", (x),  __FILE__, __LINE__));
 
-void panic(char * text, int level, int32_t data);
+void panic(const char *text, int level, int32_t data);
 //#define panic(x, y) (panic(x, y, -1))
 
 #else /* NDEBUG */

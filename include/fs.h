@@ -7,6 +7,10 @@
 
 #define EXT2_NAME_LEN 255
 
+#define TYPE_DIR 2
+#define TYPE_FILE 1
+#define TYPE_UNKNOWN 0
+
 /*
  * Maximal count of links to a file
  */
@@ -175,6 +179,13 @@ struct ext2_dir_entry_2 {
 };
 
 int ext2_read_file(u32 maj_num, u32 min_num, u8 *full_path, u8 *data_buff, u32 *num, u32 seek);
+int ext2_get_file_size(u8 *full_path);
+int ext2_file_type(u8 *full_path);
+int ext2_file_exists(u8 *path);
+int ext2_read(struct ext2_inode *in, u8 *data_buff, u32 *num, u32 seek);
+struct ext2_inode* ext2_open_file(u8 *full_path);
+int ext2_read(struct ext2_inode *in, u8 *data_buff, u32 *num, u32 seek);
+void ext2_close(struct ext2_inode *in);
 
 //struct __IO_BUF;
 
